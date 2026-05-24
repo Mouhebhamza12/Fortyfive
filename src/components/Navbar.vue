@@ -11,7 +11,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 <template>
   <nav class="nav" :class="{ 'nav--scrolled': scrolled }">
     <div class="nav-inner">
-      <router-link to="/" class="brand">STUDIO</router-link>
+      <router-link to="/" class="brand">YE</router-link>
       <div class="links">
         <a href="#">ARCHIVE</a>
         <a href="#">SHOP</a>

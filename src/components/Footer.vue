@@ -2,7 +2,7 @@
   <footer class="footer">
     <div class="container footer-grid">
       <div class="footer-section">
-        <h3 class="footer-logo">Studio</h3>
+        <h3 class="footer-logo">YE</h3>
         <p class="footer-about">
           Curated collection of premium apparel and accessories. Designed for the modern individual.
         </p>
@@ -39,7 +39,7 @@
     </div>
     <div class="footer-bottom">
       <div class="container">
-        <p>&copy; 2024 Studio Store. All rights reserved.</p>
+        <p>&copy; 2024 YE. All rights reserved.</p>
       </div>
     </div>
   </footer>

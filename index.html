@@ -4,7 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/45svg.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>YE STORE</title>
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        base-uri 'self';
+        object-src 'none';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com data:;
+        img-src 'self' data: blob: https:;
+        connect-src 'self' http://localhost:8000 http://localhost:3000 ws://localhost:3000;
+        form-action 'self' http://localhost:8000 https://accounts.google.com;
+      "
+    />
+    <title>FORTYFIVE</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   </head>
   <body>
