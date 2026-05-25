@@ -15,6 +15,8 @@ const imageViewerOpen = ref(false);
 const activeImageIndex = ref(0);
 const selectedColor = ref(product.value?.color ?? "White");
 const canHover = ref(false);
+const addToCartFeedback = ref(false);
+let addToCartFeedbackTimer = null;
 const zoomActive = ref(false);
 const zoomStyle = ref({
   transformOrigin: "50% 50%",
@@ -52,7 +54,18 @@ const goHome = () => {
   router.push({ name: "home" });
 };
 
-const addCurrentProductToCart = () => {
+const showAddToCartFeedback = () => {
+  addToCartFeedback.value = true;
+  if (addToCartFeedbackTimer) {
+    clearTimeout(addToCartFeedbackTimer);
+  }
+  addToCartFeedbackTimer = setTimeout(() => {
+    addToCartFeedback.value = false;
+    addToCartFeedbackTimer = null;
+  }, 2500);
+};
+
+const addCurrentProductToCart = (options = {}) => {
   if (!product.value || !activeImage.value) {
     return;
   }
@@ -64,11 +77,16 @@ const addCurrentProductToCart = () => {
     image: activeImage.value.src,
     color: selectedColor.value,
     size: selectedSize.value,
+    openDrawer: options.openDrawer !== false,
   });
+
+  if (options.openDrawer !== false) {
+    showAddToCartFeedback();
+  }
 };
 
 const goToCheckout = () => {
-  addCurrentProductToCart();
+  addCurrentProductToCart({ openDrawer: false });
   router.push({ name: "checkout" });
 };
 
@@ -128,7 +146,21 @@ onMounted(() => {
 
 onUnmounted(() => {
   hoverQuery?.removeEventListener?.("change", syncInteractionMode);
+  if (addToCartFeedbackTimer) {
+    clearTimeout(addToCartFeedbackTimer);
+  }
 });
+
+watch(
+  () => [route.params.slug, selectedSize.value, selectedColor.value],
+  () => {
+    addToCartFeedback.value = false;
+    if (addToCartFeedbackTimer) {
+      clearTimeout(addToCartFeedbackTimer);
+      addToCartFeedbackTimer = null;
+    }
+  }
+);
 
 watch(
   () => route.params.slug,
@@ -241,8 +273,19 @@ watch(imageViewerOpen, (isOpen) => {
         </div>
 
         <div class="details-actions">
-          <button type="button" class="details-action details-action--primary" @click="addCurrentProductToCart">
-            Add to Cart
+          <button
+            type="button"
+            class="details-action details-action--primary"
+            :class="{ 'details-action--added': addToCartFeedback }"
+            @click="addCurrentProductToCart"
+          >
+            <template v-if="addToCartFeedback">
+              <svg class="details-action-check" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12.5 9.5 17 19 7" />
+              </svg>
+              Added to cart
+            </template>
+            <template v-else>Add to Cart</template>
           </button>
           <button type="button" class="details-action details-action--secondary" @click="goToCheckout">
             Checkout
@@ -599,6 +642,24 @@ watch(imageViewerOpen, (isOpen) => {
   background: #172126;
   color: #f4eee6;
   box-shadow: 0 0.45rem 0 rgba(123, 163, 181, 0.72);
+}
+
+.details-action--added {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.details-action-check {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
 }
 
 .details-action--secondary {

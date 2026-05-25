@@ -1,7 +1,10 @@
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useToast } from "./useToast";
 
-const { success: toastSuccess, info: toastInfo } = useToast();
+const { info: toastInfo } = useToast();
+
+/** Incremented when add-to-cart should open the header cart drawer. */
+const openCartRequest = ref(0);
 
 const STORAGE_KEY = "ye-store-cart";
 
@@ -63,6 +66,7 @@ const addItem = ({
   size,
   color,
   quantity = 1,
+  openDrawer = true,
 }) => {
   loadCart();
 
@@ -71,7 +75,9 @@ const addItem = ({
 
   if (existingItem) {
     existingItem.quantity += quantity;
-    toastSuccess(`Updated ${name} in your cart`);
+    if (openDrawer) {
+      openCartRequest.value += 1;
+    }
     return;
   }
 
@@ -87,7 +93,9 @@ const addItem = ({
     quantity,
   });
 
-  toastSuccess(`Added ${name} to your cart`);
+  if (openDrawer) {
+    openCartRequest.value += 1;
+  }
 };
 
 const removeItem = (id) => {
@@ -122,6 +130,7 @@ export const useCart = () => ({
   itemCount,
   subtotal,
   subtotalLabel,
+  openCartRequest,
   addItem,
   removeItem,
   updateQuantity,

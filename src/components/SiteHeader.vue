@@ -19,7 +19,8 @@ const props = defineProps({
 
 const router = useRouter();
 const route = useRoute();
-const { cartItems, itemCount, subtotalLabel, removeItem, updateQuantity } = useCart();
+const { cartItems, itemCount, subtotalLabel, removeItem, updateQuantity, openCartRequest, formatPrice } =
+  useCart();
 const { products, loadProducts } = useProducts();
 const { success: toastSuccess } = useToast();
 
@@ -269,6 +270,11 @@ watch(activePanel, (panel) => {
     searchQuery.value = "";
   }
 });
+
+watch(openCartRequest, () => {
+  closeMobileMenu();
+  activePanel.value = "cart";
+});
 </script>
 
 <template>
@@ -335,33 +341,38 @@ watch(activePanel, (panel) => {
       </button>
     </div>
 
-    <transition name="nav-panel-fade">
+    <transition name="account-panel-fade">
       <section
-        v-if="activePanelContent && activePanel !== 'cart' && activePanel !== 'search'"
-        class="nav-panel"
-        :class="`nav-panel--${activePanel}`"
-        :aria-label="`${activePanelContent.title} panel`"
+        v-if="activePanel === 'account' && activePanelContent"
+        class="account-panel"
+        aria-label="Account menu"
       >
-        <div class="nav-panel-header">
-          <div class="nav-panel-heading">
-            <span>{{ activePanelContent.title }}</span>
-            <p v-if="activePanel === 'account' && activePanelContent.subtitle" class="nav-panel-identity">
+        <header class="account-panel__header">
+          <div class="account-panel__title-block">
+            <h2 class="account-panel__title">Account</h2>
+            <p v-if="activePanelContent.subtitle" class="account-panel__user">
               {{ activePanelContent.subtitle }}
             </p>
           </div>
-          <button type="button" class="nav-panel-close" aria-label="Close panel" @click="closeActivePanel">
+          <button
+            type="button"
+            class="account-panel__close"
+            aria-label="Close account menu"
+            @click="closeActivePanel"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6 18 18" />
               <path d="M18 6 6 18" />
             </svg>
           </button>
-        </div>
-        <div class="nav-panel-body">
+        </header>
+        <nav class="account-panel__nav" aria-label="Account links">
           <button
             v-for="item in activePanelContent.items"
             :key="item.label ?? item"
             type="button"
-            class="nav-panel-link"
+            class="account-panel__item"
+            :class="{ 'account-panel__item--danger': item.action === 'logout' }"
             @click="handlePanelItem(item)"
           >
             <span>{{ item.label ?? item }}</span>
@@ -369,7 +380,7 @@ watch(activePanel, (panel) => {
               <path d="M9 6 15 12 9 18" />
             </svg>
           </button>
-        </div>
+        </nav>
       </section>
     </transition>
 
@@ -387,76 +398,111 @@ watch(activePanel, (panel) => {
               aria-label="Cart panel"
               @click.stop
             >
-              <div class="cart-drawer-header">
-                <div class="cart-drawer-heading">
-                  <span>Cart</span>
-                  <p>{{ itemCount }} item<span v-if="itemCount !== 1">s</span></p>
+              <header class="cart-drawer__header">
+                <div class="cart-drawer__title-block">
+                  <h2 class="cart-drawer__title">Your cart</h2>
+                  <p class="cart-drawer__meta">
+                    <template v-if="itemCount">
+                      {{ itemCount }} {{ itemCount === 1 ? "item" : "items" }}
+                    </template>
+                    <template v-else>Empty</template>
+                  </p>
                 </div>
-                <button type="button" class="cart-drawer-close" aria-label="Close cart" @click="closeActivePanel">
+                <button
+                  type="button"
+                  class="cart-drawer__close"
+                  aria-label="Close cart"
+                  @click="closeActivePanel"
+                >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M6 6 18 18" />
                     <path d="M18 6 6 18" />
                   </svg>
                 </button>
-              </div>
+              </header>
 
-              <div class="cart-drawer-body">
-                <template v-if="activePanelContent.items.length">
-                  <div class="nav-cart-list">
-                    <article
-                      v-for="item in activePanelContent.items"
-                      :key="item.id"
-                      class="nav-cart-item"
-                    >
-                      <img :src="item.image" :alt="item.name" class="nav-cart-image" />
-                      <div class="nav-cart-copy">
-                        <strong>{{ item.name }}</strong>
-                        <p>{{ item.color }} / {{ item.size }}</p>
-                        <div class="nav-cart-meta">
-                          <div class="nav-cart-controls">
-                            <button type="button" @click="updateQuantity(item.id, item.quantity - 1)">-</button>
-                            <span>{{ item.quantity }}</span>
-                            <button type="button" @click="updateQuantity(item.id, item.quantity + 1)">+</button>
-                          </div>
-                          <button type="button" class="nav-cart-remove" @click="removeItem(item.id)">Remove</button>
-                        </div>
-                      </div>
-                    </article>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="nav-empty-state">
-                    <div class="nav-empty-mark">
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M6 8h12l-1 13H7L6 8Z" />
-                        <path d="M9 8a3 3 0 0 1 6 0" />
-                      </svg>
+              <div class="cart-drawer__body">
+                <ul v-if="activePanelContent.items.length" class="cart-drawer__list">
+                  <li v-for="item in activePanelContent.items" :key="item.id" class="cart-line">
+                    <div class="cart-line__media">
+                      <img :src="item.image" :alt="item.name" class="cart-line__image" />
+                      <button
+                        type="button"
+                        class="cart-line__remove"
+                        aria-label="Remove item"
+                        @click="removeItem(item.id)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M6 6 18 18" />
+                          <path d="M18 6 6 18" />
+                        </svg>
+                      </button>
                     </div>
-                    <p class="nav-panel-note">Your cart is empty.</p>
-                    <p class="nav-panel-subnote">
-                      Add products first, then complete checkout. Payment happens on delivery.
-                    </p>
+                    <div class="cart-line__info">
+                      <h3 class="cart-line__name">{{ item.name }}</h3>
+                      <p class="cart-line__variant">{{ item.size }} · {{ item.color }}</p>
+                      <div class="cart-line__actions">
+                        <div class="cart-line__qty" aria-label="Quantity">
+                          <button
+                            type="button"
+                            aria-label="Decrease quantity"
+                            @click="updateQuantity(item.id, item.quantity - 1)"
+                          >
+                            −
+                          </button>
+                          <span>{{ item.quantity }}</span>
+                          <button
+                            type="button"
+                            aria-label="Increase quantity"
+                            @click="updateQuantity(item.id, item.quantity + 1)"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span class="cart-line__price">{{
+                          formatPrice(item.unitPrice * item.quantity)
+                        }}</span>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+                <div v-else class="cart-drawer__empty">
+                  <div class="cart-drawer__empty-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M6 8h12l-1 13H7L6 8Z" />
+                      <path d="M9 8a3 3 0 0 1 6 0" />
+                    </svg>
                   </div>
-                </template>
+                  <p class="cart-drawer__empty-title">Your cart is empty</p>
+                  <p class="cart-drawer__empty-copy">
+                    Browse the shop, add a tee, then checkout. You pay on delivery.
+                  </p>
+                  <button type="button" class="cart-drawer__shop-link" @click="closeActivePanel">
+                    Browse products
+                  </button>
+                </div>
               </div>
 
-              <div class="cart-drawer-footer">
-                <div class="nav-cart-total">
+              <footer class="cart-drawer__footer">
+                <div class="cart-drawer__subtotal">
                   <span>Subtotal</span>
                   <strong>{{ subtotalLabel }}</strong>
                 </div>
-                <p class="nav-panel-subnote">
-                  No online payment. Customers pay when the order is delivered.
+                <p class="cart-drawer__footnote">
+                  Shipping is confirmed at checkout. Pay when your order arrives.
                 </p>
                 <button
                   type="button"
-                  class="nav-panel-link nav-panel-link--cta"
+                  class="cart-drawer__checkout"
                   :disabled="!activePanelContent.items.length"
                   @click="openCheckout"
                 >
-                  Go to Checkout
+                  Checkout
                 </button>
-              </div>
+                <button type="button" class="cart-drawer__continue" @click="closeActivePanel">
+                  Continue shopping
+                </button>
+              </footer>
             </aside>
           </transition>
         </div>
@@ -741,21 +787,17 @@ watch(activePanel, (panel) => {
   pointer-events: none;
 }
 
-.nav-panel {
+.account-panel {
   position: absolute;
   top: calc(100% + 0.85rem);
   right: clamp(1rem, 4vw, 2.5rem);
-  width: min(22rem, calc(100vw - 2rem));
-  background: rgba(254, 251, 246, 0.98);
-  border: 1px solid rgba(23, 33, 38, 0.08);
-  border-radius: 0.8rem;
-  box-shadow:
-    0 20px 45px rgba(23, 33, 38, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.9) inset;
-  padding: 1.25rem;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  overflow: hidden;
+  z-index: 120;
+  width: min(20.5rem, calc(100vw - 2rem));
+  padding: 1.35rem 1.25rem 1.25rem;
+  background: #f9f7f2;
+  border: 1px solid rgba(23, 33, 38, 0.06);
+  border-radius: 1.15rem;
+  box-shadow: 0 18px 42px rgba(23, 33, 38, 0.12);
 }
 
 .cart-overlay-enter-active,
@@ -791,15 +833,15 @@ watch(activePanel, (panel) => {
   transform: translateX(18px) translateY(-10px);
 }
 
-.nav-panel-fade-enter-active,
-.nav-panel-fade-leave-active {
+.account-panel-fade-enter-active,
+.account-panel-fade-leave-active {
   transition:
     opacity 0.2s ease,
     transform 0.24s ease;
 }
 
-.nav-panel-fade-enter-from,
-.nav-panel-fade-leave-to {
+.account-panel-fade-enter-from,
+.account-panel-fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
 }
@@ -816,67 +858,69 @@ watch(activePanel, (panel) => {
   position: absolute;
   top: 0;
   right: 0;
-  width: min(28rem, 100vw);
+  width: min(26rem, 100vw);
   height: 100%;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   background:
     linear-gradient(180deg, rgba(254, 251, 246, 0.99), rgba(239, 230, 216, 0.99));
   border-left: 1px solid rgba(23, 33, 38, 0.08);
   box-shadow: -18px 0 40px rgba(34, 56, 66, 0.16);
 }
 
-.cart-drawer-header,
-.cart-drawer-footer {
-  padding: 1.2rem 1.2rem 1rem;
-}
-
-.cart-drawer-header {
+.cart-drawer__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-shrink: 0;
+  padding: 1.35rem 1.5rem 1.2rem;
   border-bottom: 1px solid rgba(23, 33, 38, 0.08);
 }
 
-.cart-drawer-heading {
-  display: grid;
-  gap: 0.35rem;
+.cart-drawer__title-block {
+  min-width: 0;
 }
 
-.cart-drawer-heading span {
-  color: #172126;
-  font-family: "Helvetica Neue", sans-serif;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-}
-
-.cart-drawer-heading p {
+.cart-drawer__title {
   margin: 0;
-  color: rgba(23, 33, 38, 0.48);
+  color: #172126;
   font-family: "Sora", sans-serif;
-  font-size: 0.7rem;
+  font-size: 1.12rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-.cart-drawer-close {
-  width: 2.5rem;
-  height: 2.5rem;
+.cart-drawer__meta {
+  margin: 0.28rem 0 0;
+  color: rgba(23, 33, 38, 0.52);
+  font-family: "Sora", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.cart-drawer__close {
+  width: 2.35rem;
+  height: 2.35rem;
+  flex-shrink: 0;
   border: 0;
-  background: transparent;
+  border-radius: 50%;
+  background: rgba(23, 33, 38, 0.05);
   color: #172126;
   cursor: pointer;
   display: inline-grid;
   place-items: center;
+  transition: background 0.2s ease;
 }
 
-.cart-drawer-close svg {
-  width: 1.1rem;
-  height: 1.1rem;
+.cart-drawer__close:hover {
+  background: rgba(23, 33, 38, 0.1);
+}
+
+.cart-drawer__close svg {
+  width: 1rem;
+  height: 1rem;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -884,308 +928,394 @@ watch(activePanel, (panel) => {
   stroke-width: 2;
 }
 
-.cart-drawer-body {
+.cart-drawer__body {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
 }
 
-.cart-drawer-footer {
+.cart-drawer__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cart-line {
   display: grid;
-  gap: 0.8rem;
-  border-top: 1px solid rgba(23, 33, 38, 0.08);
-  background: rgba(255, 255, 255, 0.32);
+  grid-template-columns: 5.25rem 1fr;
+  gap: 1rem;
+  align-items: stretch;
+  padding: 1.15rem 1.5rem;
+  border-bottom: 1px solid rgba(23, 33, 38, 0.08);
 }
 
-.nav-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
-  pointer-events: none;
-}
-
-.nav-panel-header {
+.cart-line__media {
   position: relative;
+}
+
+.cart-line__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(23, 33, 38, 0.06);
+}
+
+.cart-line__remove {
+  position: absolute;
+  top: -0.4rem;
+  left: -0.4rem;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid rgba(23, 33, 38, 0.1);
+  border-radius: 50%;
+  background: #fefbf6;
+  color: #172126;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.cart-line__remove svg {
+  width: 0.65rem;
+  height: 0.65rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.cart-line__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: 0.1rem;
+}
+
+.cart-line__name {
+  margin: 0;
+  color: #172126;
+  font-family: "Sora", sans-serif;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.cart-line__variant {
+  margin: 0.2rem 0 0;
+  color: rgba(23, 33, 38, 0.55);
+  font-family: "Sora", sans-serif;
+  font-size: 0.74rem;
+}
+
+.cart-line__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 0.65rem;
+}
+
+.cart-line__qty {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid rgba(23, 33, 38, 0.14);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.cart-line__qty button {
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  background: transparent;
+  color: #172126;
+  cursor: pointer;
+  font-family: "Sora", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.cart-line__qty span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.75rem;
+  padding: 0 0.15rem;
+  border-left: 1px solid rgba(23, 33, 38, 0.1);
+  border-right: 1px solid rgba(23, 33, 38, 0.1);
+  font-family: "Sora", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.cart-line__price {
+  color: #172126;
+  font-family: "Sora", sans-serif;
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cart-drawer__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 2rem 1.75rem 2.5rem;
+  text-align: center;
+}
+
+.cart-drawer__empty-icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.35rem;
+  border-radius: 50%;
+  background: rgba(123, 163, 181, 0.14);
+  color: #172126;
+}
+
+.cart-drawer__empty-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.cart-drawer__empty-title {
+  margin: 0;
+  color: #172126;
+  font-family: "Sora", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.cart-drawer__empty-copy {
+  margin: 0;
+  max-width: 16rem;
+  color: rgba(23, 33, 38, 0.58);
+  font-family: "Sora", sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.cart-drawer__shop-link {
+  margin-top: 0.65rem;
+  border: 1px solid rgba(23, 33, 38, 0.2);
+  background: rgba(255, 255, 255, 0.45);
+  color: #172126;
+  cursor: pointer;
+  font-family: "Sora", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.1rem;
+}
+
+.cart-drawer__shop-link:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.cart-drawer__footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.2rem 1.5rem 1.45rem;
+  border-top: 1px solid rgba(23, 33, 38, 0.08);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.cart-drawer__subtotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #172126;
+  font-family: "Sora", sans-serif;
+  font-size: 0.88rem;
+}
+
+.cart-drawer__subtotal strong {
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.cart-drawer__footnote {
+  margin: 0;
+  color: rgba(23, 33, 38, 0.52);
+  font-family: "Sora", sans-serif;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.cart-drawer__checkout {
+  width: 100%;
+  min-height: 3.15rem;
+  margin-top: 0.35rem;
+  border: 1px solid #172126;
+  background: #172126;
+  color: #f4eee6;
+  cursor: pointer;
+  font-family: "Sora", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.cart-drawer__checkout:hover:not(:disabled) {
+  background: #7ba3b5;
+  border-color: #7ba3b5;
+}
+
+.cart-drawer__checkout:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.cart-drawer__continue {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: rgba(23, 33, 38, 0.62);
+  cursor: pointer;
+  font-family: "Sora", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0 0;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.cart-drawer__continue:hover {
+  color: #172126;
+}
+
+.account-panel__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
 }
 
-.nav-panel-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  position: relative;
-  z-index: 1;
+.account-panel__title-block {
+  min-width: 0;
 }
 
-.nav-panel-header span,
-.nav-panel-note,
-.nav-panel-subnote,
-.nav-panel-link,
-.nav-panel-close {
-  font-family: "Helvetica Neue", sans-serif;
-}
-
-.nav-panel-header span {
+.account-panel__title {
+  margin: 0;
   color: #172126;
-  font-size: 0.7rem;
+  font-family: "Sora", sans-serif;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
-.nav-panel-identity {
-  margin: 0;
-  color: rgba(23, 33, 38, 0.58);
-  font-family: "Helvetica Neue", sans-serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.03em;
+.account-panel__user {
+  margin: 0.45rem 0 0;
+  color: rgba(23, 33, 38, 0.55);
+  font-family: "Sora", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
-.nav-panel-close {
-  position: relative;
-  z-index: 1;
-  width: 2.2rem;
-  height: 2.2rem;
+.account-panel__close {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
   border: 0;
-  border-radius: 50%;
   background: transparent;
   color: rgba(23, 33, 38, 0.4);
   cursor: pointer;
   display: inline-grid;
   place-items: center;
-  transition: all 0.25s ease;
+  transition: color 0.2s ease;
 }
 
-.nav-panel-close:hover {
-  background: rgba(23, 33, 38, 0.05);
-  color: #172126;
-  transform: scale(1.05);
-}
-
-.nav-panel-close svg {
-  width: 0.9rem;
-  height: 0.9rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.5;
-}
-
-.nav-panel-body {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.nav-panel-link {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  text-align: left;
-  border: 1px solid rgba(23, 33, 38, 0.04);
-  background: rgba(255, 255, 255, 0.65);
-  color: #172126;
-  border-radius: 0.6rem;
-  padding: 0.85rem 1.1rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.nav-panel-link:hover {
-  background: #fff;
-  border-color: rgba(123, 163, 181, 0.3);
-  color: #7ba3b5;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 15px rgba(23, 33, 38, 0.04);
-}
-
-.nav-panel-link svg {
-  width: 0.85rem;
-  height: 0.85rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-  flex: 0 0 auto;
-  opacity: 0.6;
-  transition: opacity 0.25s ease;
-}
-
-.nav-panel-link--cta {
-  justify-content: center;
-  text-align: center;
-  background: #172126;
-  color: #f4ead6;
-  border-radius: 999px;
-  padding-left: 1rem;
-}
-
-.nav-panel-link--cta:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-}
-
-.nav-panel-note {
-  color: #172126;
-  font-size: 0.98rem;
-  font-weight: 800;
-  margin: 0;
-}
-
-.nav-panel-subnote {
-  color: rgba(23, 33, 38, 0.66);
-  font-size: 0.8rem;
-  line-height: 1.7;
-  margin: 0;
-}
-
-.nav-cart-list {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.nav-cart-item {
-  display: grid;
-  grid-template-columns: 4.25rem 1fr;
-  gap: 0.9rem;
-  align-items: start;
-  padding: 0 0 1rem;
-  border-bottom: 1px solid rgba(23, 33, 38, 0.08);
-}
-
-.nav-cart-image {
-  width: 4.25rem;
-  height: 4.25rem;
-  object-fit: contain;
-  border-radius: 0.9rem;
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(23, 33, 38, 0.06);
-}
-
-.nav-cart-copy {
-  display: grid;
-  gap: 0.35rem;
-  color: #172126;
-  font-family: "Helvetica Neue", sans-serif;
-}
-
-.nav-cart-copy strong {
-  font-size: 0.8rem;
-  line-height: 1.3;
-}
-
-.nav-cart-copy p {
-  margin: 0;
-  font-size: 0.74rem;
-  color: rgba(23, 33, 38, 0.62);
-}
-
-.nav-cart-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.1rem;
-}
-
-.nav-cart-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
-  width: fit-content;
-  padding: 0.22rem 0.3rem;
-  border-radius: 999px;
-  background: rgba(123, 163, 181, 0.12);
-}
-
-.nav-cart-controls button,
-.nav-cart-remove {
-  border: 0;
-  background: transparent;
-  color: #172126;
-  cursor: pointer;
-  font-family: "Helvetica Neue", sans-serif;
-}
-
-.nav-cart-controls button {
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 1px solid rgba(23, 33, 38, 0.1);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.66);
-}
-
-.nav-cart-controls span {
-  min-width: 1rem;
-  text-align: center;
-  color: #172126;
-  font-size: 0.78rem;
-}
-
-.nav-cart-remove {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  opacity: 0.72;
-  text-transform: none;
-}
-
-.nav-cart-footer {
-  display: grid;
-  gap: 0.8rem;
-  margin-top: 0.9rem;
-  padding-top: 0.2rem;
-}
-
-.nav-cart-total {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #172126;
-  font-family: "Helvetica Neue", sans-serif;
-  font-size: 0.9rem;
-}
-
-.nav-empty-state {
-  display: grid;
-  justify-items: start;
-  gap: 0.8rem;
-  padding: 0.35rem 0 0.2rem;
-}
-
-.nav-empty-mark {
-  width: 3rem;
-  height: 3rem;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 1rem 0.6rem 1rem 0.6rem;
-  background: rgba(123, 163, 181, 0.16);
+.account-panel__close:hover {
   color: #172126;
 }
 
-.nav-empty-mark svg {
-  width: 1.3rem;
-  height: 1.3rem;
+.account-panel__close svg {
+  width: 0.95rem;
+  height: 0.95rem;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
+}
+
+.account-panel__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.account-panel__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(23, 33, 38, 0.04);
+  border-radius: 0.85rem;
+  background: #ffffff;
+  color: #172126;
+  cursor: pointer;
+  font-family: "Sora", sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  box-shadow: 0 1px 0 rgba(23, 33, 38, 0.03);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.account-panel__item:hover {
+  background: #fff;
+  border-color: rgba(23, 33, 38, 0.1);
+  box-shadow: 0 4px 14px rgba(23, 33, 38, 0.06);
+}
+
+.account-panel__item svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex-shrink: 0;
+  fill: none;
+  stroke: rgba(23, 33, 38, 0.38);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.account-panel__item--danger {
+  color: rgba(23, 33, 38, 0.78);
 }
 
 @media (max-width: 1120px) {
@@ -1308,65 +1438,36 @@ watch(activePanel, (panel) => {
     cursor: pointer;
   }
 
-  .nav-panel {
+  .account-panel {
     top: calc(100% + 0.6rem);
     left: 0.75rem;
     right: 0.75rem;
     width: auto;
-    padding: 0.95rem;
-    border-radius: 1.1rem 0.8rem 1.1rem 0.8rem;
-    box-shadow: 0 18px 32px rgba(34, 56, 66, 0.14);
+    padding: 1.15rem 1rem 1rem;
+    border-radius: 1.1rem;
   }
 
   .cart-drawer {
     width: min(100vw, 26rem);
   }
 
-  .cart-drawer-header,
-  .cart-drawer-body,
-  .cart-drawer-footer {
-    padding-left: 1rem;
-    padding-right: 1rem;
+  .cart-drawer__header,
+  .cart-drawer__footer {
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
   }
 
-  .nav-panel-header span {
-    font-size: 0.68rem;
+  .cart-line {
+    grid-template-columns: 4.5rem 1fr;
+    gap: 0.85rem;
+    padding: 1rem 1.1rem;
   }
 
-  .nav-panel-close {
-    width: 2.15rem;
-    height: 2.15rem;
+  .account-panel__item {
+    padding: 0.9rem 0.95rem;
+    font-size: 0.82rem;
   }
 
-  .nav-panel-link {
-    border-radius: 0.9rem 0.6rem 0.9rem 0.6rem;
-    padding: 0.85rem 0.9rem;
-    font-size: 0.8rem;
-  }
-
-  .nav-cart-item {
-    grid-template-columns: 3.5rem 1fr;
-    align-items: start;
-  }
-
-  .nav-cart-image {
-    width: 3.5rem;
-    height: 3.5rem;
-  }
-
-  .nav-cart-meta {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.45rem;
-  }
-
-  .nav-cart-remove {
-    padding: 0;
-  }
-
-  .nav-cart-total {
-    font-size: 0.88rem;
-  }
 }
 
 /* Fullscreen Search Overlay */

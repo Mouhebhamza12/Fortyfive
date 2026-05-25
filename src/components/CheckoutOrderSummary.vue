@@ -7,153 +7,172 @@ const props = defineProps({
   itemCount: { type: Number, default: 0 },
   subtotal: { type: Number, default: 0 },
   shippingFee: { type: Number, default: 0 },
-  deliveryLabel: { type: String, default: "" },
   showShipping: { type: Boolean, default: false },
+  loadingShipping: { type: Boolean, default: false },
 });
 
 const total = computed(() => props.subtotal + (props.showShipping ? props.shippingFee : 0));
+
+const shippingLabel = computed(() => {
+  if (props.loadingShipping) return "...";
+  if (props.showShipping) return formatPrice(props.shippingFee);
+  return "Select wilaya";
+});
 </script>
 
 <template>
-  <aside class="summary">
-    <div class="summary-card">
-      <h2 class="summary-title">Summary</h2>
+  <aside class="order-sum">
+    <div class="order-sum__inner">
+      <h2 class="order-sum__title">Order summary</h2>
+      <p v-if="itemCount" class="order-sum__count">{{ itemCount }} item<span v-if="itemCount !== 1">s</span></p>
 
-      <div v-if="items.length" class="summary-items">
-        <article v-for="item in items" :key="item.id" class="summary-item">
-          <img :src="item.image" :alt="item.name" class="summary-item-image" />
-          <div class="summary-item-copy">
-            <p class="summary-item-name">{{ item.name }}</p>
-            <p class="summary-item-meta">{{ item.color }} / {{ item.size }} · x{{ item.quantity }}</p>
+      <ul v-if="items.length" class="order-sum__list">
+        <li v-for="item in items" :key="item.id" class="order-sum__row">
+          <div class="order-sum__product">
+            <span class="order-sum__name">{{ item.name }}</span>
+            <span class="order-sum__meta">{{ item.size }}, {{ item.color }} &times;{{ item.quantity }}</span>
           </div>
-          <strong>{{ formatPrice(item.unitPrice * item.quantity) }}</strong>
-        </article>
-      </div>
+          <span class="order-sum__line-price">{{ formatPrice(item.unitPrice * item.quantity) }}</span>
+        </li>
+      </ul>
 
-      <p v-else class="summary-empty">Cart is empty.</p>
-
-      <div class="summary-lines">
-        <div class="summary-line">
+      <div class="order-sum__totals">
+        <div class="order-sum__total-row">
           <span>Subtotal</span>
-          <strong>{{ formatPrice(subtotal) }}</strong>
+          <span>{{ formatPrice(subtotal) }}</span>
         </div>
-        <div v-if="showShipping" class="summary-line">
-          <span>Shipping{{ deliveryLabel ? ` (${deliveryLabel})` : "" }}</span>
-          <strong>{{ formatPrice(shippingFee) }}</strong>
+        <div class="order-sum__total-row">
+          <span>Shipping</span>
+          <span :class="{ 'order-sum__muted': !showShipping && !loadingShipping }">{{ shippingLabel }}</span>
         </div>
-        <div v-if="showShipping" class="summary-line summary-line--total">
+        <div class="order-sum__total-row order-sum__total-row--final">
           <span>Total</span>
-          <strong>{{ formatPrice(total) }}</strong>
+          <strong>{{ formatPrice(showShipping ? total : subtotal) }}</strong>
         </div>
       </div>
-
-      <p class="summary-note">You pay on delivery.</p>
     </div>
   </aside>
 </template>
 
 <style scoped>
-.summary-card {
-  padding: 1.25rem;
-  border: 1px solid rgba(23, 33, 38, 0.1);
-  background: rgba(255, 252, 246, 0.55);
-  position: sticky;
-  top: 7rem;
+.order-sum {
+  min-width: 0;
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  background: rgba(232, 220, 200, 0.65);
+  border-left: 1px solid rgba(23, 33, 38, 0.08);
 }
 
-.summary-title {
-  margin: 0 0 1rem;
+.order-sum__inner {
+  position: sticky;
+  top: 6rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.order-sum__title {
+  margin: 0;
   color: #172126;
-  font: 700 0.8rem/1 "Sora", sans-serif;
-  letter-spacing: 0.08em;
+  font: 700 0.78rem/1 "Sora", sans-serif;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-.summary-items {
-  display: grid;
-  gap: 0.85rem;
-  margin-bottom: 1rem;
+.order-sum__count {
+  margin: 0.35rem 0 1rem;
+  color: rgba(79, 105, 115, 0.9);
+  font: 500 0.8rem/1.4 "Sora", sans-serif;
 }
 
-.summary-item {
+.order-sum__list {
+  list-style: none;
+  margin: 0 0 auto;
+  padding: 0 0 1.25rem;
   display: grid;
-  grid-template-columns: 3.75rem 1fr auto;
   gap: 0.65rem;
-  align-items: center;
-  padding-bottom: 0.85rem;
-  border-bottom: 1px solid rgba(23, 33, 38, 0.08);
+  border-bottom: 1px solid rgba(23, 33, 38, 0.1);
 }
 
-.summary-item-image {
-  width: 3.75rem;
-  height: 3.75rem;
-  object-fit: contain;
-}
-
-.summary-item-name,
-.summary-line strong,
-.summary-item strong {
-  margin: 0;
-  color: #172126;
-  font-family: "Sora", sans-serif;
-}
-
-.summary-item-name {
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-
-.summary-item-meta {
-  margin: 0.15rem 0 0;
-  color: rgba(23, 33, 38, 0.6);
-  font: 400 0.8rem/1.4 "Sora", sans-serif;
-}
-
-.summary-lines {
-  display: grid;
-  gap: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(23, 33, 38, 0.08);
-}
-
-.summary-line {
+.order-sum__row {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.order-sum__product {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.order-sum__name {
+  color: #172126;
+  font: 600 0.86rem/1.35 "Sora", sans-serif;
+}
+
+.order-sum__meta {
+  color: rgba(79, 105, 115, 0.95);
+  font: 500 0.72rem/1.4 "Sora", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.order-sum__line-price {
+  flex-shrink: 0;
+  color: #172126;
+  font: 700 0.86rem/1.35 "Sora", sans-serif;
+  white-space: nowrap;
+}
+
+.order-sum__totals {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.order-sum__total-row {
+  display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
   color: rgba(23, 33, 38, 0.72);
-  font: 400 0.88rem/1.5 "Sora", sans-serif;
+  font: 500 0.9rem/1.5 "Sora", sans-serif;
 }
 
-.summary-line--total {
-  padding-top: 0.65rem;
-  margin-top: 0.25rem;
-  border-top: 1px solid rgba(23, 33, 38, 0.08);
+.order-sum__total-row span:last-child {
   color: #172126;
-  font-size: 0.95rem;
+  font-weight: 600;
 }
 
-.summary-empty,
-.summary-note {
-  margin: 0;
-  color: rgba(23, 33, 38, 0.65);
-  font: 400 0.84rem/1.5 "Sora", sans-serif;
+.order-sum__muted {
+  color: rgba(79, 105, 115, 0.9) !important;
+  font-weight: 500 !important;
+  font-size: 0.84rem !important;
 }
 
-.summary-note {
-  margin-top: 0.85rem;
+.order-sum__total-row--final {
+  margin-top: 0.5rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(23, 33, 38, 0.12);
+  color: #172126;
+  font-size: 1.05rem;
+}
+
+.order-sum__total-row--final strong {
+  font-size: 1.15rem;
+  font-weight: 800;
 }
 
 @media (max-width: 900px) {
-  .summary-card {
+  .order-sum {
+    border-left: 0;
+    border-top: 1px solid rgba(23, 33, 38, 0.08);
+  }
+
+  .order-sum__inner {
     position: static;
-  }
-
-  .summary-item {
-    grid-template-columns: 3.25rem 1fr;
-  }
-
-  .summary-item strong {
-    grid-column: 2;
   }
 }
 </style>

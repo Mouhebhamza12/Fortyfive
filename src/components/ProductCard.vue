@@ -1,9 +1,12 @@
 <script setup>
+import { onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useCart } from "../composables/useCart";
 
 const router = useRouter();
 const { addItem } = useCart();
+const addedToCart = ref(false);
+let addedFeedbackTimer = null;
 
 defineProps({
   product: {
@@ -25,7 +28,22 @@ const addProductToCart = (product) => {
     color: product.color ?? product.colors?.[0] ?? "White",
     size: product.sizes?.[1] ?? product.sizes?.[0] ?? "M",
   });
+
+  addedToCart.value = true;
+  if (addedFeedbackTimer) {
+    clearTimeout(addedFeedbackTimer);
+  }
+  addedFeedbackTimer = setTimeout(() => {
+    addedToCart.value = false;
+    addedFeedbackTimer = null;
+  }, 2500);
 };
+
+onUnmounted(() => {
+  if (addedFeedbackTimer) {
+    clearTimeout(addedFeedbackTimer);
+  }
+});
 </script>
 
 <template>
@@ -39,7 +57,20 @@ const addProductToCart = (product) => {
         <p class="product-price">{{ product.price }}</p>
       </div>
       <div class="product-actions">
-        <button class="product-btn product-btn--primary" type="button" @click="addProductToCart(product)">Add to Cart</button>
+        <button
+          class="product-btn product-btn--primary"
+          :class="{ 'product-btn--added': addedToCart }"
+          type="button"
+          @click="addProductToCart(product)"
+        >
+          <template v-if="addedToCart">
+            <svg class="product-btn-check" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12.5 9.5 17 19 7" />
+            </svg>
+            Added to cart
+          </template>
+          <template v-else>Add to Cart</template>
+        </button>
         <button class="product-btn product-btn--secondary" type="button" @click="openProduct(product.slug)">View Product</button>
       </div>
     </div>
@@ -147,6 +178,24 @@ const addProductToCart = (product) => {
 .product-btn--primary {
   background: #20343b;
   color: #f4ead6;
+}
+
+.product-btn--added {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.product-btn-check {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
 }
 
 .product-btn--secondary:hover {

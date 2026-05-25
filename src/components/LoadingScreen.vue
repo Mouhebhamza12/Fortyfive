@@ -1,55 +1,79 @@
 <template>
-  <div class="loading-screen">
-    <div class="loader-container">
-      <div class="spinner"></div>
-      <img class="logo" :src="brandMark" alt="45 logo" />
+  <div class="boot" role="status" aria-live="polite" aria-label="Loading">
+    <img class="boot__logo" :src="logo" alt="45" width="88" height="88" />
+    <div class="boot__dots" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
     </div>
   </div>
 </template>
 
 <script setup>
-import brandMark from "../../assets/images/45svg.png";
+import logo from "../../assets/images/45svg.png";
 </script>
 
 <style scoped>
-.loading-screen {
+.boot {
   position: fixed;
   inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
   background: #7ba3b5;
+}
+
+.boot__logo {
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 18px rgba(23, 33, 38, 0.22));
+}
+
+.boot__dots {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  gap: 0.55rem;
 }
 
-.loader-container {
-  position: relative;
-  width: 150px;
-  height: 150px;
-}
-
-.spinner {
-  position: absolute;
-  inset: 0;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 3px solid white;
+.boot__dots span {
+  width: 0.55rem;
+  height: 0.55rem;
   border-radius: 50%;
-  animation: spin 1.2s linear infinite;
+  background: #f4ead6;
+  opacity: 0.45;
+  animation: boot-dot 0.9s ease-in-out infinite;
 }
 
-.logo {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 60px;
-  height: 60px;
-  z-index: 2;
+.boot__dots span:nth-child(2) {
+  animation-delay: 0.15s;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+.boot__dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes boot-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot__dots span {
+    animation: none;
+    opacity: 0.85;
   }
 }
 </style>
