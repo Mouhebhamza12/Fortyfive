@@ -232,10 +232,7 @@ class AuthController extends Controller
     protected function authCookie(string $plainTextToken): \Symfony\Component\HttpFoundation\Cookie
     {
         $ttlMinutes = max(60, (int) env('AUTH_TOKEN_TTL_MINUTES', 60 * 24 * 7));
-        $isSecureCookie = filter_var(
-            env('AUTH_COOKIE_SECURE', ! app()->environment('local')),
-            FILTER_VALIDATE_BOOL
-        );
+        $isSecureCookie = $this->shouldUseSecureCookie();
 
         return Cookie::make(
             $this->authCookieName(),
@@ -258,11 +255,17 @@ class AuthController extends Controller
             return $configuredName;
         }
 
-        $isSecureCookie = filter_var(
-            env('AUTH_COOKIE_SECURE', ! app()->environment('local')),
-            FILTER_VALIDATE_BOOL
-        );
+        return $this->shouldUseSecureCookie() ? '__Host-auth_session' : 'auth_token';
+    }
 
-        return $isSecureCookie ? '__Host-auth_session' : 'auth_token';
+    protected function shouldUseSecureCookie(): bool
+    {
+        $configuredValue = env('AUTH_COOKIE_SECURE');
+
+        if ($configuredValue !== null) {
+            return filter_var($configuredValue, FILTER_VALIDATE_BOOL);
+        }
+
+        return app()->environment('production') && request()->isSecure();
     }
 }

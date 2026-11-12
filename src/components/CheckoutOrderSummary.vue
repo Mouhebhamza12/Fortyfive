@@ -13,166 +13,158 @@ const props = defineProps({
 
 const total = computed(() => props.subtotal + (props.showShipping ? props.shippingFee : 0));
 
+const variantLabel = (item) =>
+  [item.color, item.size && item.size !== "One size" ? item.size : null]
+    .filter(Boolean)
+    .join(", ");
+
 const shippingLabel = computed(() => {
-  if (props.loadingShipping) return "...";
+  if (props.loadingShipping) return "Calculating…";
   if (props.showShipping) return formatPrice(props.shippingFee);
-  return "Select wilaya";
+  return "Choose a wilaya";
 });
 </script>
 
 <template>
-  <aside class="order-sum">
-    <div class="order-sum__inner">
-      <h2 class="order-sum__title">Order summary</h2>
-      <p v-if="itemCount" class="order-sum__count">{{ itemCount }} item<span v-if="itemCount !== 1">s</span></p>
+  <aside class="summary" aria-label="Order summary">
+    <h2 class="summary__title">
+      Your order
+      <span v-if="itemCount">({{ itemCount }})</span>
+    </h2>
 
-      <ul v-if="items.length" class="order-sum__list">
-        <li v-for="item in items" :key="item.id" class="order-sum__row">
-          <div class="order-sum__product">
-            <span class="order-sum__name">{{ item.name }}</span>
-            <span class="order-sum__meta">{{ item.size }}, {{ item.color }} &times;{{ item.quantity }}</span>
-          </div>
-          <span class="order-sum__line-price">{{ formatPrice(item.unitPrice * item.quantity) }}</span>
-        </li>
-      </ul>
+    <ul v-if="items.length" class="summary__list">
+      <li v-for="item in items" :key="item.id" class="summary__row">
+        <span class="summary__thumb"><img :src="item.image" alt="" /></span>
+        <span class="summary__product">
+          <span class="summary__name">{{ item.name }}</span>
+          <span class="summary__meta">{{ variantLabel(item) }}</span>
+          <span class="summary__meta">Qty {{ item.quantity }}</span>
+        </span>
+        <span class="summary__price">{{ formatPrice(item.unitPrice * item.quantity) }}</span>
+      </li>
+    </ul>
+    <p v-else class="summary__empty">Your cart is empty.</p>
 
-      <div class="order-sum__totals">
-        <div class="order-sum__total-row">
-          <span>Subtotal</span>
-          <span>{{ formatPrice(subtotal) }}</span>
-        </div>
-        <div class="order-sum__total-row">
-          <span>Shipping</span>
-          <span :class="{ 'order-sum__muted': !showShipping && !loadingShipping }">{{ shippingLabel }}</span>
-        </div>
-        <div class="order-sum__total-row order-sum__total-row--final">
-          <span>Total</span>
-          <strong>{{ formatPrice(showShipping ? total : subtotal) }}</strong>
-        </div>
+    <dl class="summary__totals">
+      <div>
+        <dt>Subtotal</dt>
+        <dd>{{ formatPrice(subtotal) }}</dd>
       </div>
-    </div>
+      <div>
+        <dt>Delivery</dt>
+        <dd :class="{ 'summary__muted': !showShipping }">{{ shippingLabel }}</dd>
+      </div>
+      <div class="summary__total">
+        <dt>Total to pay on delivery</dt>
+        <dd>{{ formatPrice(showShipping ? total : subtotal) }}</dd>
+      </div>
+    </dl>
   </aside>
 </template>
 
 <style scoped>
-.order-sum {
-  min-width: 0;
-  padding: clamp(1.5rem, 3vw, 2.25rem);
-  background: rgba(232, 220, 200, 0.65);
-  border-left: 1px solid rgba(23, 33, 38, 0.08);
-}
-
-.order-sum__inner {
+.summary {
   position: sticky;
-  top: 6rem;
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
+  top: calc(var(--header-h) + 1.5rem);
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  border-radius: var(--radius);
+  background: var(--mist);
 }
 
-.order-sum__title {
-  margin: 0;
-  color: #172126;
-  font: 700 0.78rem/1 "Sora", sans-serif;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.order-sum__count {
-  margin: 0.35rem 0 1rem;
-  color: rgba(79, 105, 115, 0.9);
-  font: 500 0.8rem/1.4 "Sora", sans-serif;
-}
-
-.order-sum__list {
-  list-style: none;
-  margin: 0 0 auto;
-  padding: 0 0 1.25rem;
-  display: grid;
-  gap: 0.65rem;
-  border-bottom: 1px solid rgba(23, 33, 38, 0.1);
-}
-
-.order-sum__row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.order-sum__product {
-  display: flex;
-  flex-direction: column;
-  gap: 0.12rem;
-  min-width: 0;
-}
-
-.order-sum__name {
-  color: #172126;
-  font: 600 0.86rem/1.35 "Sora", sans-serif;
-}
-
-.order-sum__meta {
-  color: rgba(79, 105, 115, 0.95);
-  font: 500 0.72rem/1.4 "Sora", sans-serif;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.order-sum__line-price {
-  flex-shrink: 0;
-  color: #172126;
-  font: 700 0.86rem/1.35 "Sora", sans-serif;
-  white-space: nowrap;
-}
-
-.order-sum__totals {
-  margin-top: 1.25rem;
-  display: grid;
-  gap: 0.55rem;
-}
-
-.order-sum__total-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  color: rgba(23, 33, 38, 0.72);
-  font: 500 0.9rem/1.5 "Sora", sans-serif;
-}
-
-.order-sum__total-row span:last-child {
-  color: #172126;
+.summary__title {
+  font-size: 1rem;
   font-weight: 600;
 }
 
-.order-sum__muted {
-  color: rgba(79, 105, 115, 0.9) !important;
-  font-weight: 500 !important;
-  font-size: 0.84rem !important;
+.summary__title span {
+  color: var(--ink-soft);
+  font-weight: 400;
 }
 
-.order-sum__total-row--final {
+.summary__list {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.summary__row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.summary__thumb {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.summary__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.summary__product {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.summary__name {
+  font-weight: 600;
+}
+
+.summary__meta,
+.summary__empty,
+.summary__muted {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.summary__empty {
+  margin-top: 1rem;
+}
+
+.summary__price {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.summary__totals {
+  margin: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line-strong);
+}
+
+.summary__totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0;
+}
+
+.summary__totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary__totals .summary__total {
   margin-top: 0.5rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid rgba(23, 33, 38, 0.12);
-  color: #172126;
-  font-size: 1.05rem;
-}
-
-.order-sum__total-row--final strong {
-  font-size: 1.15rem;
-  font-weight: 800;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 @media (max-width: 900px) {
-  .order-sum {
-    border-left: 0;
-    border-top: 1px solid rgba(23, 33, 38, 0.08);
-  }
-
-  .order-sum__inner {
+  .summary {
     position: static;
+    grid-row: 1;
   }
 }
 </style>

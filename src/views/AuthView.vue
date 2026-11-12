@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import layerTexture from "../../assets/images/bgls.png";
+import BrandMark from "../components/BrandMark.vue";
 import { apiBaseUrl, appBaseUrl, authJsonHeaders, jsonHeaders } from "../lib/api";
 import { useToast } from "../composables/useToast";
 
@@ -12,23 +12,23 @@ const router = useRouter();
 
 const authContent = {
   "sign-in": {
-    title: "Sign in to your account.",
+    title: "Sign in",
     description:
-      "Access your orders, saved details, and upcoming drops from one place.",
-    submitLabel: "Sign In",
+      "See your orders and check out faster with your saved delivery details.",
+    submitLabel: "Sign in",
     secondaryText: "Need an account?",
     secondaryLink: { label: "Create one", route: { name: "sign-up" } },
   },
   "sign-up": {
-    title: "Join the drop list.",
+    title: "Create your account",
     description:
-      "Create your account to shop, track orders, and check out faster.",
-    submitLabel: "Create Account",
+      "Track your orders and save your delivery details for next time.",
+    submitLabel: "Create account",
     secondaryText: "Already have an account?",
     secondaryLink: { label: "Sign in", route: { name: "sign-in" } },
   },
   "auth-google-callback": {
-    title: "Signing you in.",
+    title: "Signing you in…",
     description: "Finishing your Google authentication.",
     submitLabel: "Continue",
     secondaryText: "If this takes too long,",
@@ -58,9 +58,10 @@ const form = reactive({
 const feedback = ref("");
 const errorMessage = ref("");
 const isSubmitting = ref(false);
+const showPassword = ref(false);
 
 const submitLabel = computed(() =>
-  isSubmitting.value ? "Please wait..." : page.value.submitLabel
+  isSubmitting.value ? "One moment…" : page.value.submitLabel
 );
 
 const notifyAuthChanged = () => {
@@ -214,427 +215,536 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <main class="auth-shell">
-    <section class="auth-stage">
-      <div class="auth-background">
-        <img :src="layerTexture" alt="" class="auth-background-mark" />
-      </div>
+  <main class="auth" :class="{ 'auth--sign-up': route.name === 'sign-up' }">
+    <section class="auth__card" aria-labelledby="auth-title">
+      <form class="auth__form" @submit.prevent="handleSubmit">
+        <router-link to="/" class="auth__logo" aria-label="Fortyfive, back to the shop">
+          <BrandMark class="auth__logo-mark" title="Fortyfive" />
+          <span>FORTYFIVE</span>
+        </router-link>
 
-      <div class="auth-panel auth-panel--form">
-        <form class="auth-form" @submit.prevent="handleSubmit">
-          <router-link
-            v-if="showHomeBadge"
-            to="/"
-            class="home-badge"
-            aria-label="Back to home"
-          >
-            <img src="/45svgblue.png" alt="" />
-          </router-link>
+        <header class="auth__intro">
+          <h1 id="auth-title">{{ page.title }}</h1>
+          <p>{{ page.description }}</p>
+        </header>
 
-          <div class="auth-form-copy">
-            <h1>{{ page.title }}</h1>
-            <p class="auth-copy">{{ page.description }}</p>
+        <div v-if="showFormFields" class="auth__fields">
+          <div v-if="route.name === 'sign-up'" class="auth__two">
+            <label class="ff-field auth__field">
+              <span>First name</span>
+              <input
+                v-model="form.firstName"
+                type="text"
+                autocomplete="given-name"
+                placeholder="First name*"
+                required
+              />
+            </label>
+            <label class="ff-field auth__field">
+              <span>Last name</span>
+              <input
+                v-model="form.lastName"
+                type="text"
+                autocomplete="family-name"
+                placeholder="Last name*"
+                required
+              />
+            </label>
           </div>
 
+          <label class="ff-field auth__field">
+            <span>Email address</span>
+            <input
+              v-model="form.email"
+              type="email"
+              autocomplete="email"
+              placeholder="Email address*"
+              required
+            />
+          </label>
+
+          <label class="ff-field auth__field">
+            <span>Password</span>
+            <span class="auth__password">
+              <input
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                :autocomplete="route.name === 'sign-up' ? 'new-password' : 'current-password'"
+                placeholder="Password*"
+                required
+              />
+              <button
+                type="button"
+                class="auth__password-toggle"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-pressed="showPassword"
+                @click="showPassword = !showPassword"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6-9.5-6-9.5-6Z" />
+                  <circle cx="12" cy="12" r="2.5" />
+                </svg>
+              </button>
+            </span>
+          </label>
+
+          <label v-if="route.name === 'sign-up'" class="ff-field auth__field">
+            <span>Confirm password</span>
+            <input
+              v-model="form.confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Confirm password*"
+              required
+            />
+          </label>
+
+          <div v-if="route.name === 'sign-in'" class="auth__options">
+            <label class="auth__check">
+              <input v-model="form.remember" type="checkbox" />
+              <span>Keep me signed in</span>
+            </label>
+          </div>
+
+          <label v-if="route.name === 'sign-up'" class="auth__check">
+            <input v-model="form.agree" type="checkbox" />
+            <span>I agree to receive messages about my account and orders.</span>
+          </label>
+
+          <button type="submit" class="ff-btn ff-btn--block auth__submit" :disabled="isSubmitting">
+            {{ submitLabel }}
+          </button>
+        </div>
+
+        <p v-if="feedback" class="auth__feedback" role="status">{{ feedback }}</p>
+        <p v-if="errorMessage" class="auth__error" role="alert">{{ errorMessage }}</p>
+
+        <p class="auth__switch">
+          {{ page.secondaryText }}
+          <router-link :to="page.secondaryLink.route" class="ff-link">
+            {{ page.secondaryLink.label }}
+          </router-link>
+        </p>
+
+        <template v-if="showGoogleButton">
+          <p class="auth__or"><span>or</span></p>
           <button
-            v-if="showGoogleButton"
             type="button"
-            class="google-btn"
+            class="ff-btn ff-btn--ghost ff-btn--block auth__google"
             @click="signInWithGoogle"
           >
             Continue with Google
           </button>
-
-          <div v-if="showGoogleButton" class="divider">
-            <span>or</span>
-          </div>
-
-          <template v-if="showFormFields">
-          <div v-if="route.name === 'sign-up'" class="auth-grid auth-grid--two">
-            <label class="field">
-              <span>First name</span>
-              <input v-model="form.firstName" type="text" placeholder="First name" />
-            </label>
-            <label class="field">
-              <span>Last name</span>
-              <input v-model="form.lastName" type="text" placeholder="Last name" />
-            </label>
-          </div>
-
-          <label class="field">
-            <span>Email</span>
-            <input
-              v-model="form.email"
-              type="email"
-              placeholder="you@example.com"
-            />
-          </label>
-
-          <label class="field">
-            <span>Password</span>
-            <input v-model="form.password" type="password" placeholder="Enter password" />
-          </label>
-
-          <template v-if="route.name === 'sign-up'">
-            <label class="field">
-              <span>Confirm password</span>
-              <input
-                v-model="form.confirmPassword"
-                type="password"
-                placeholder="Confirm password"
-              />
-            </label>
-          </template>
-
-          <div v-if="route.name === 'sign-in'" class="auth-row">
-            <label class="check">
-              <input v-model="form.remember" type="checkbox" />
-              <span>Keep me signed in</span>
-            </label>
-            <span class="auth-note">Google sign-in recommended</span>
-          </div>
-
-          <label v-if="route.name === 'sign-up'" class="check">
-            <input v-model="form.agree" type="checkbox" />
-            <span>I agree to account updates and order communication.</span>
-          </label>
-          </template>
-
-          <button
-            v-if="showFormFields"
-            type="submit"
-            class="submit-btn"
-            :disabled="isSubmitting"
-          >
-            {{ submitLabel }}
-          </button>
-
-          <p v-if="feedback" class="feedback">{{ feedback }}</p>
-          <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-
-          <p class="switch-copy">
-            {{ page.secondaryText }}
-            <router-link :to="page.secondaryLink.route" class="text-link">
-              {{ page.secondaryLink.label }}
-            </router-link>
-          </p>
-        </form>
-      </div>
+        </template>
+      </form>
     </section>
   </main>
 </template>
 
 <style scoped>
-.auth-shell {
-  --brand-blue: #7498a6;
-  --brand-blue-deep: #4b6570;
-  --brand-ink: #162127;
-  --brand-sand: #f0dfcd;
-  --brand-warm: #ead8b9;
-  height: 100vh;
-  background: #efe6da;
-  color: #fff;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  font-family: "Cormorant Garamond", Georgia, serif;
-}
-
-.auth-stage {
-  flex: 1 1 auto;
-  position: relative;
+.auth {
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  min-height: 100vh;
-  padding: clamp(1rem, 2vw, 1.5rem);
-  background: transparent;
-  overflow: hidden;
-}
-
-.auth-background {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.auth-background-mark {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.auth-background-mark {
-  object-fit: cover;
-  object-position: center;
-  opacity: 0.32;
-  mix-blend-mode: normal;
-  transform: scale(1);
-}
-
-.auth-panel--form {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-
-.field span,
-.switch-copy,
-.check,
-.feedback {
-  font-family: "Sora", sans-serif;
-}
-
-.auth-form {
-  width: min(100%, 28rem);
-  padding: clamp(1.2rem, 2vw, 1.45rem);
+  padding: clamp(0.75rem, 2vw, 1.5rem);
   background:
-    linear-gradient(180deg, rgba(244, 234, 214, 0.96) 0%, rgba(240, 223, 205, 0.92) 100%);
-  border: 1px solid rgba(116, 152, 166, 0.32);
-  border-radius: 0;
-  box-shadow:
-    0 20px 40px rgba(39, 56, 63, 0.08),
-    0 0 0 1px rgba(255, 255, 255, 0.22) inset;
-  position: relative;
-  overflow: hidden;
+    linear-gradient(180deg, rgba(20, 32, 42, 0.12), rgba(13, 25, 35, 0.38)),
+    url("/mountain-background.jpg") center / cover no-repeat;
 }
 
-.home-badge {
-  position: absolute;
-  top: 0.8rem;
-  right: 0.8rem;
-  z-index: 2;
-  display: inline-flex;
+.auth__card {
+  width: min(100%, 28rem);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 0.45rem;
+  background: #fff;
+  box-shadow: 0 1.5rem 5rem rgba(10, 23, 33, 0.2);
+}
+
+.auth__logo {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 4rem;
-  height: 4rem;
+  gap: 0.45rem;
+  width: fit-content;
+  margin: 0 auto 1.25rem;
+  color: var(--ink);
   text-decoration: none;
 }
 
-.home-badge img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+.auth__logo-mark {
+  height: 2.15rem;
+  width: auto;
 }
 
-.auth-form::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 0.22rem;
-  background: linear-gradient(90deg, #7ba3b5 0%, #92b5c3 100%);
-}
-
-.auth-form-copy h1 {
-  margin: 0;
-  max-width: 8ch;
-  font-family: "Helvetica Neue", sans-serif;
-  font-size: clamp(2.25rem, 3.8vw, 3.15rem);
-  line-height: 0.9;
-  letter-spacing: -0.05em;
-  text-transform: uppercase;
-  color: var(--brand-ink);
-}
-
-.google-btn,
-.resend-btn {
-  width: 100%;
-  min-height: 2.9rem;
-  border: 1px solid rgba(79, 105, 115, 0.18);
-  background: transparent;
-  color: var(--brand-ink);
-  font-family: "Sora", sans-serif;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0.8rem 0 1rem;
-  color: rgba(22, 33, 39, 0.48);
-  font-family: "Sora", sans-serif;
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.auth-copy {
-  margin: 0.95rem 0 1.35rem;
-  max-width: 20rem;
-  font-family: "Sora", sans-serif;
+.auth__logo span {
   font-size: 0.8rem;
-  line-height: 1.6;
-  color: rgba(22, 33, 39, 0.64);
+  font-weight: 700;
+  letter-spacing: 0.16em;
 }
 
-.auth-grid {
+.auth__intro {
+  text-align: center;
+}
+
+.auth__intro h1 {
+  font-size: clamp(1.65rem, 4vw, 1.9rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.auth__intro p {
+  max-width: 23rem;
+  margin: 0.75rem auto 0;
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+.auth__form {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.auth__fields {
   display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.auth__two {
+  display: flex;
   gap: 0.75rem;
 }
 
-.auth-grid--two {
-  grid-template-columns: 1fr 1fr;
+.auth__two > * {
+  min-width: 0;
+  flex: 1;
 }
 
-.field {
+.auth__field {
+  gap: 0.35rem;
+}
+
+.auth__field > span:first-child {
+  color: #222;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.auth__field input {
+  min-height: 3rem;
+  padding: 0.7rem 0.875rem;
+  border: 1px solid #d5d6d8;
+  border-radius: 0.2rem;
+  font-size: 0.975rem;
+}
+
+.auth__field input:focus {
+  outline: 2px solid #222;
+  outline-offset: -1px;
+  border-color: #222;
+}
+
+.auth__password {
+  position: relative;
+  display: block;
+}
+
+.auth__password input {
+  padding-right: 3rem;
+}
+
+.auth__password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
   display: grid;
-  gap: 0.45rem;
-  margin-bottom: 0.7rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #73777b;
 }
 
-.field span {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(79, 105, 115, 0.88);
+.auth__password-toggle svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 
-.field input {
-  min-height: 2.8rem;
-  padding: 0 0.85rem;
-  border: 1px solid rgba(79, 105, 115, 0.14);
-  border-radius: 0;
-  background: rgba(232, 220, 200, 0.34);
-  color: var(--brand-ink);
-  font-family: "Sora", sans-serif;
-  font-size: 0.83rem;
-}
-
-.field input::placeholder {
-  color: rgba(22, 33, 39, 0.38);
-}
-
-.field input:focus {
-  outline: none;
-  border-color: rgba(116, 152, 166, 0.62);
-  box-shadow: inset 0 -2px 0 rgba(116, 152, 166, 0.62);
-}
-
-.auth-row {
+.auth__options {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin: 0.15rem 0 1rem;
 }
 
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  font-size: 0.71rem;
-  color: rgba(22, 33, 39, 0.76);
-  margin-bottom: 0.9rem;
+.auth__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  color: #36383a;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  cursor: pointer;
 }
 
-.check input {
+.auth__check input {
+  flex: none;
   width: 1rem;
   height: 1rem;
+  margin: 0.1rem 0 0;
+  accent-color: var(--ink);
 }
 
-.text-link {
-  color: var(--brand-blue-deep);
-  text-decoration: none;
-  font-family: "Sora", sans-serif;
-  font-size: 0.71rem;
-  font-weight: 700;
+.auth__submit {
+  min-height: 3rem;
+  border-radius: 0.2rem;
+  font-size: 1rem;
 }
 
-.auth-note {
-  color: rgba(22, 33, 39, 0.62);
-  font-family: "Sora", sans-serif;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.auth__feedback,
+.auth__error {
+  margin-top: 1rem;
+  font-size: 0.9375rem;
+}
+
+.auth__feedback {
+  color: var(--ok);
+}
+
+.auth__error {
+  color: var(--alert);
+}
+
+.auth__switch {
+  margin-top: 0.85rem;
+  color: #3f4245;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.auth__switch .ff-link {
+  margin-left: 0.3rem;
+}
+
+.auth__or {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.9rem 0 0.65rem;
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
   text-transform: uppercase;
 }
 
-.submit-btn {
-  width: 100%;
+.auth__or::before,
+.auth__or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.auth__google {
   min-height: 2.9rem;
-  border: 1px solid #7ba3b5;
-  border-radius: 0;
-  background: #7ba3b5;
-  color: #102f36;
-  font-family: "Sora", sans-serif;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  border-color: #d5d6d8;
+  border-radius: 0.2rem;
+  font-size: 0.9375rem;
 }
 
-.submit-btn:disabled {
-  cursor: wait;
-  opacity: 0.8;
+.auth__google:hover {
+  border-color: var(--ink);
 }
 
-.submit-btn:hover {
-  transform: none;
-  background: #86aab9;
+.auth :deep(:focus-visible) {
+  outline-color: #17191b;
 }
 
-.feedback {
-  margin: 1rem 0 0;
-  font-size: 0.74rem;
-  color: var(--brand-blue-deep);
+.auth--sign-up .auth__card {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
-.error-message {
-  margin: 1rem 0 0;
-  font-family: "Sora", sans-serif;
-  font-size: 0.74rem;
-  color: #8d3030;
+.auth--sign-up .auth__logo {
+  gap: 0;
+  margin-bottom: 0.65rem;
 }
 
-.switch-copy {
-  margin: 1rem 0 0;
-  font-size: 0.71rem;
-  color: rgba(22, 33, 39, 0.62);
+.auth--sign-up .auth__logo-mark {
+  height: 1.65rem;
 }
 
-@media (max-width: 960px) {
-  .auth-stage {
-    padding: 1.25rem;
+.auth--sign-up .auth__logo span,
+.auth--sign-up .auth__intro p {
+  display: none;
+}
+
+.auth--sign-up .auth__intro h1 {
+  font-size: 1.5rem;
+}
+
+.auth--sign-up .auth__fields {
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.auth--sign-up .auth__field {
+  gap: 0;
+}
+
+.auth--sign-up .auth__field > span:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.auth--sign-up .auth__field input {
+  min-height: 2.75rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.auth--sign-up .auth__check {
+  font-size: 0.8rem;
+}
+
+.auth--sign-up .auth__submit,
+.auth--sign-up .auth__google {
+  min-height: 2.7rem;
+}
+
+.auth--sign-up .auth__switch {
+  margin-top: 0.65rem;
+}
+
+.auth--sign-up .auth__or {
+  margin: 0.55rem 0 0.45rem;
+}
+
+@media (max-width: 980px) {
+  .auth__card {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
   }
 
-  .auth-background-mark {
-    transform: scale(0.98);
+  .auth--sign-up .auth__card {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .auth__intro p {
+    display: none;
+  }
+
+  .auth__field > span:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .auth__fields {
+    gap: 0.55rem;
+    margin-top: 0.85rem;
+  }
+
+  .auth__field {
+    gap: 0;
+  }
+
+  .auth__field input {
+    min-height: 2.75rem;
+  }
+
+  .auth__switch {
+    margin-top: 0.65rem;
+  }
+
+  .auth__or {
+    margin: 0.55rem 0 0.45rem;
   }
 }
 
-@media (max-width: 640px) {
-  .auth-grid--two,
-  .auth-row {
-    grid-template-columns: 1fr;
-    display: grid;
+@media (max-width: 600px) {
+  .auth {
+    min-height: 100dvh;
+    padding: 0.75rem 1.25rem;
+    background: var(--paper);
   }
 
-  .auth-form-copy h1 {
-    font-size: clamp(1.8rem, 10vw, 2.45rem);
+  .auth__card {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
-  .auth-form {
-    width: min(100%, 23rem);
-    padding: 1rem;
+  .auth__logo span {
+    display: none;
   }
 
-  .home-badge {
-    top: 0.65rem;
-    right: 0.65rem;
-    width: 3.2rem;
-    height: 3.2rem;
+  .auth__fields {
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+
+  .auth__field {
+    gap: 0;
+  }
+
+  .auth__field > span:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .auth__field input {
+    min-height: 2.8rem;
+    padding: 0.65rem 0.8rem;
+    font-size: 0.9375rem;
+  }
+
+  .auth__password input {
+    padding-right: 2.8rem;
+  }
+
+  .auth--sign-up .auth__fields {
+    gap: 0.45rem;
+    margin-top: 0.7rem;
+  }
+
+  .auth--sign-up .auth__two {
+    gap: 0.5rem;
+  }
+
+  .auth--sign-up .auth__two > * {
+    flex-basis: 0;
+  }
+
+  .auth--sign-up .auth__two {
+    gap: 0.5rem;
   }
 }
 </style>

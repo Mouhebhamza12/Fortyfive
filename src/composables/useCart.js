@@ -1,4 +1,5 @@
 import { computed, reactive, ref, watch } from "vue";
+import { formatPrice, parsePrice } from "../lib/formatPrice";
 import { useToast } from "./useToast";
 
 const { info: toastInfo } = useToast();
@@ -12,13 +13,6 @@ const state = reactive({
   items: [],
   ready: false,
 });
-
-const parsePrice = (price) => {
-  const numeric = Number.parseInt(String(price).replace(/[^\d]/g, ""), 10);
-  return Number.isFinite(numeric) ? numeric : 0;
-};
-
-const formatPrice = (value) => `${value} DA`;
 
 const loadCart = () => {
   if (state.ready || typeof window === "undefined") {

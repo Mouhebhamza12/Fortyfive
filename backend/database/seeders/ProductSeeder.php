@@ -9,44 +9,28 @@ class ProductSeeder extends Seeder
 {
     public function run(): void
     {
-        $products = [
-            [
-                'name' => 'College Dropout Tee',
-                'slug' => 'college-dropout-tee',
-                'description' => 'Built for everyday wear with a straightforward fit, heavier hand feel, and clean front print.',
-                'price' => 3500,
-                'category' => 'T-Shirts',
-                'sizes' => ['S', 'M', 'L', 'XL'],
-                'colors' => ['White', 'Black'],
-                'images' => [],
-                'featured' => true,
-                'in_stock' => true,
-            ],
-            [
-                'name' => 'Ye Tee',
-                'slug' => 'YE Tee',
-                'description' => 'A clean everyday tee with a centered graphic, structured collar, and enough weight to hold its shape.',
-                'price' => 3500,
-                'category' => 'T-Shirts',
-                'sizes' => ['S', 'M', 'L', 'XL'],
-                'colors' => ['White', 'Black'],
-                'images' => [],
-                'featured' => true,
-                'in_stock' => true,
-            ],
-            [
-                'name' => 'Vultures Tee',
-                'slug' => 'Vultures-tee',
-                'description' => 'A direct graphic tee with a clean cut, balanced proportions, and a heavier cotton base.',
-                'price' => 3500,
-                'category' => 'T-Shirts',
-                'sizes' => ['S', 'M', 'L', 'XL'],
-                'colors' => ['White', 'Black'],
-                'images' => [],
-                'featured' => false,
-                'in_stock' => true,
-            ],
+        // The print tees are retired. Fortyfive now starts with sunglasses.
+        Product::whereIn('slug', ['college-dropout-tee', 'YE Tee', 'Vultures-tee'])->delete();
+
+        // "Atlas" and 3900 are a working name and price: change them to the real ones.
+        Product::whereIn('slug', ['tassili', 'hoggar', 'chrea', 'aures'])->delete();
+
+        $frames = [
+            ['Atlas', 'atlas', 3900, ['Black / Smoke', 'Black / Rose', 'Silver / Smoke', 'Black / Tea', 'Clear'], 'A low wraparound frame that sits close and stays put on the move.'],
         ];
+
+        $products = array_map(fn (array $frame) => [
+            'name' => $frame[0],
+            'slug' => $frame[1],
+            'description' => $frame[4],
+            'price' => $frame[2],
+            'category' => 'Eyewear',
+            'sizes' => ['One size'],
+            'colors' => $frame[3],
+            'images' => [],
+            'featured' => true,
+            'in_stock' => true,
+        ], $frames);
 
         foreach ($products as $product) {
             Product::updateOrCreate(

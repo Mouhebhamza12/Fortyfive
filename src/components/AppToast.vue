@@ -31,87 +31,68 @@ const { toasts, dismiss } = useToast();
 <style scoped>
 .toast-stack {
   position: fixed;
-  top: 5.5rem;
-  right: clamp(0.75rem, 2vw, 1.5rem);
-  z-index: 12000;
+  left: 50%;
+  bottom: 1.25rem;
+  z-index: 200;
   display: grid;
-  gap: 0.55rem;
-  width: min(22rem, calc(100vw - 1.5rem));
+  gap: 0.5rem;
+  width: min(26rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
 .toast {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.75rem;
-  align-items: start;
-  padding: 0.85rem 0.9rem;
-  border: 1px solid rgba(23, 33, 38, 0.12);
-  background: rgba(254, 251, 246, 0.97);
-  color: #172126;
-  box-shadow:
-    0 12px 28px rgba(23, 33, 38, 0.12),
-    0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0.6rem 0.8rem 1rem;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius);
+  border-left: 3px solid #8c8c8c;
+  font-family: var(--font);
+  font-size: 0.9375rem;
   pointer-events: auto;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.toast--success {
-  border-left: 3px solid #4a7c59;
 }
 
 .toast--error {
-  border-left: 3px solid #9b3b3b;
+  border-left-color: #e2705c;
 }
 
-.toast--info {
-  border-left: 3px solid #7ba3b5;
+.toast--success {
+  border-left-color: #6fbf97;
 }
 
 .toast-message {
   margin: 0;
-  font: 500 0.88rem/1.45 "Sora", sans-serif;
 }
 
 .toast-close {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
   border: 0;
-  background: transparent;
-  color: rgba(23, 33, 38, 0.55);
-  font-size: 1.15rem;
+  background: none;
+  color: inherit;
+  font-size: 1.25rem;
   line-height: 1;
-  cursor: pointer;
-  padding: 0;
 }
 
-.toast-close:hover {
-  color: #172126;
+.toast-close:focus-visible {
+  outline-color: var(--paper);
 }
 
 .toast-enter-active,
 .toast-leave-active {
   transition:
-    opacity 0.22s ease,
-    transform 0.22s ease;
+    opacity 0.2s ease,
+    transform 0.25s var(--ease);
 }
 
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateX(12px);
-}
-
-.toast-move {
-  transition: transform 0.22s ease;
-}
-
-@media (max-width: 640px) {
-  .toast-stack {
-    top: auto;
-    bottom: 1rem;
-    right: 0.75rem;
-    left: 0.75rem;
-    width: auto;
-  }
+  transform: translateY(0.5rem);
 }
 </style>

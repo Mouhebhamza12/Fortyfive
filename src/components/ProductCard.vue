@@ -1,220 +1,102 @@
 <script setup>
-import { onUnmounted, ref } from "vue";
-import { useRouter } from "vue-router";
-import { useCart } from "../composables/useCart";
+import { computed } from "vue";
 
-const router = useRouter();
-const { addItem } = useCart();
-const addedToCart = ref(false);
-let addedFeedbackTimer = null;
-
-defineProps({
-  product: {
-    type: Object,
-    required: true
-  }
-})
-
-const openProduct = (slug) => {
-  router.push({ name: "product-details", params: { slug } });
-};
-
-const addProductToCart = (product) => {
-  addItem({
-    slug: product.slug,
-    name: product.name,
-    price: product.price,
-    image: product.image,
-    color: product.color ?? product.colors?.[0] ?? "White",
-    size: product.sizes?.[1] ?? product.sizes?.[0] ?? "M",
-  });
-
-  addedToCart.value = true;
-  if (addedFeedbackTimer) {
-    clearTimeout(addedFeedbackTimer);
-  }
-  addedFeedbackTimer = setTimeout(() => {
-    addedToCart.value = false;
-    addedFeedbackTimer = null;
-  }, 2500);
-};
-
-onUnmounted(() => {
-  if (addedFeedbackTimer) {
-    clearTimeout(addedFeedbackTimer);
-  }
+// One tile per colourway: pass `color` to show a specific one.
+const props = defineProps({
+  product: { type: Object, required: true },
+  color: { type: String, default: "" },
 });
+
+const shownColor = computed(() => props.color || props.product.color || "");
+
+const image = computed(() => {
+  const images = props.product.images;
+  if (images && !Array.isArray(images) && images[shownColor.value]?.[0]?.src) {
+    return images[shownColor.value][0].src;
+  }
+  return props.product.image;
+});
+
+const link = computed(() => ({
+  name: "product-details",
+  params: { slug: props.product.slug },
+  query: props.color ? { color: props.color } : undefined,
+}));
 </script>
 
 <template>
-  <div class="product-card">
-    <button class="product-image" type="button" @click="openProduct(product.slug)">
-      <img :src="product.image" :alt="product.name" />
-    </button>
-    <div class="product-info">
-      <div class="product-meta">
-        <h3 class="product-name">{{ product.name }}</h3>
-        <p class="product-price">{{ product.price }}</p>
-      </div>
-      <div class="product-actions">
-        <button
-          class="product-btn product-btn--primary"
-          :class="{ 'product-btn--added': addedToCart }"
-          type="button"
-          @click="addProductToCart(product)"
-        >
-          <template v-if="addedToCart">
-            <svg class="product-btn-check" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12.5 9.5 17 19 7" />
-            </svg>
-            Added to cart
-          </template>
-          <template v-else>Add to Cart</template>
-        </button>
-        <button class="product-btn product-btn--secondary" type="button" @click="openProduct(product.slug)">View Product</button>
-      </div>
-    </div>
-  </div>
+  <router-link :to="link" class="tile">
+    <span class="tile__media">
+      <img :src="image" :alt="`${product.name} ${shownColor}`.trim()" loading="lazy" />
+      <span v-if="product.in_stock === false" class="tile__flag">Sold out</span>
+    </span>
+    <span class="tile__info">
+      <span class="tile__name">{{ product.name }}</span>
+      <span class="tile__price">{{ product.price }}</span>
+      <span v-if="shownColor" class="tile__color">{{ shownColor }}</span>
+    </span>
+  </router-link>
 </template>
 
 <style scoped>
-.product-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
-  gap: 0.5rem;
-  transition: transform 0.3s ease;
+.tile {
+  display: block;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
 }
 
-.product-image {
+.tile__media {
   position: relative;
-  width: 100%;
-  min-height: 385px;
-  background: transparent;
+  display: block;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: var(--mist);
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.15rem 0 0;
-  border: 0;
-  cursor: pointer;
 }
 
-.product-image img {
+.tile__media img {
   width: 100%;
   height: 100%;
-  max-width: 286px;
-  max-height: 372px;
   object-fit: contain;
-  transition: transform 0.5s ease;
+  transform: scale(1.12);
+  transition: transform 0.5s var(--ease);
 }
 
-.product-card:hover .product-image img {
-  transform: scale(1.03);
+.tile:hover .tile__media img {
+  transform: scale(1.2);
 }
 
-.product-info {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  padding: 0;
-  border-top: 0;
-  background: transparent;
+.tile__flag {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
-.product-meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.product-name {
-  font-family: "Sora", sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #1a2429;
-  margin: 0;
-}
-
-.product-price {
-  font-family: "Sora", sans-serif;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #4f6973;
-  margin: 0;
-}
-
-.product-actions {
+.tile__info {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.7rem;
+  grid-template-columns: 1fr auto;
+  gap: 0 0.75rem;
+  padding: 0.7rem 0.1rem 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
 }
 
-.product-btn {
-  min-height: 3rem;
-  border: 1px solid #20343b;
-  border-radius: 0;
-  background: transparent;
-  color: #20343b;
-  font-family: "Sora", sans-serif;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
+.tile__name {
+  font-weight: 600;
 }
 
-.product-btn:hover {
-  transform: translateY(-1px);
+.tile__price {
+  font-variant-numeric: tabular-nums;
 }
 
-.product-btn--primary {
-  background: #20343b;
-  color: #f4ead6;
-}
-
-.product-btn--added {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-}
-
-.product-btn-check {
-  width: 0.85rem;
-  height: 0.85rem;
-  flex-shrink: 0;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.5;
-}
-
-.product-btn--secondary:hover {
-  background: rgba(32, 52, 59, 0.08);
-}
-
-@media (max-width: 760px) {
-  .product-image {
-    min-height: 350px;
-    padding: 0.1rem 0 0;
-  }
-
-  .product-image img {
-    max-width: 252px;
-    max-height: 332px;
-  }
-
-  .product-actions {
-    grid-template-columns: 1fr;
-  }
+.tile__color {
+  grid-column: 1 / -1;
+  color: var(--ink-soft);
 }
 </style>

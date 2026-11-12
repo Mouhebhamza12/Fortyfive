@@ -67,11 +67,17 @@ class AuthenticateApiToken
             return $configuredName;
         }
 
-        $isSecureCookie = filter_var(
-            env('AUTH_COOKIE_SECURE', ! app()->environment('local')),
-            FILTER_VALIDATE_BOOL
-        );
+        return $this->shouldUseSecureCookie() ? '__Host-auth_session' : 'auth_token';
+    }
 
-        return $isSecureCookie ? '__Host-auth_session' : 'auth_token';
+    protected function shouldUseSecureCookie(): bool
+    {
+        $configuredValue = env('AUTH_COOKIE_SECURE');
+
+        if ($configuredValue !== null) {
+            return filter_var($configuredValue, FILTER_VALIDATE_BOOL);
+        }
+
+        return app()->environment('production') && request()->isSecure();
     }
 }

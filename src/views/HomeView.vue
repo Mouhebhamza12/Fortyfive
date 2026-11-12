@@ -1,746 +1,399 @@
 <script setup>
-import heroImage from "../../assets/images/bg (2).png";
-import SiteHeader from "../components/SiteHeader.vue";
-import ProductCard from "../components/ProductCard.vue";
-import { onMounted, ref, computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import heroImage from "../../assets/images/atlas/hero-black-rose.png";
+import bandImage from "../../assets/images/atlas/hero-silver-smoke.png";
+import ProductCard from "../components/ProductCard.vue";
+import SiteFooter from "../components/SiteFooter.vue";
+import SiteHeader from "../components/SiteHeader.vue";
 import { useProducts } from "../composables/useProducts";
 
 const route = useRoute();
 const router = useRouter();
-const { products, loadProducts } = useProducts();
+const { products, isReady, loadProducts } = useProducts();
 
-const heroReady = ref(false);
-const navReady = ref(false);
-const productsReady = ref(false);
+const searchTerm = computed(() =>
+  typeof route.query.q === "string" ? route.query.q.trim() : ""
+);
 
-const navLinks = [
-  { label: "Home", target: "home" },
-  { label: "Shop", target: "shop" },
-];
-
-const filteredProducts = computed(() => {
-  const catalog = products.value;
-  const q = route.query.q;
-  if (!q) return catalog;
-
-  const query = q.toLowerCase().trim();
-  return catalog.filter(
-    (p) =>
-      p.name.toLowerCase().includes(query) ||
-      (p.color && p.color.toLowerCase().includes(query)) ||
-      (p.colors && p.colors.some((c) => c.toLowerCase().includes(query))) ||
-      (p.description && p.description.toLowerCase().includes(query))
+// The shop lists every colourway as its own tile.
+const tiles = computed(() => {
+  const query = searchTerm.value.toLowerCase();
+  const all = products.value.flatMap((product) => {
+    const colors = product.colors?.length ? product.colors : [""];
+    return colors.map((color) => ({ key: `${product.slug}-${color}`, product, color }));
+  });
+  if (!query) return all;
+  return all.filter(({ product, color }) =>
+    [product.name, product.shape, product.category, color]
+      .filter(Boolean)
+      .some((text) => String(text).toLowerCase().includes(query))
   );
 });
 
-const clearSearchFilter = () => {
-  router.push({ name: "home", hash: "#shop" });
-};
+const clearSearch = () => router.push({ name: "home", hash: "#shop" });
 
-onMounted(async () => {
-  await loadProducts();
-  setTimeout(() => (navReady.value = true), 100);
-  setTimeout(() => (heroReady.value = true), 300);
-  setTimeout(() => (productsReady.value = true), 600);
-
-  if (route.query.q) {
-    setTimeout(() => {
-      document
-        .getElementById("shop")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 800);
-  }
-});
+onMounted(loadProducts);
 </script>
 
 <template>
-  <main class="site-shell">
-    <SiteHeader :nav-links="navLinks" :visible="navReady" />
+  <div class="home">
+    <SiteHeader />
 
-    <section id="home" class="drop-hero">
-      <img
-        :src="heroImage"
-        alt=""
-        class="hero-photo"
-        :class="{ 'hero-photo--visible': heroReady }"
-      />
-      <div class="hero-overlay"></div>
-      <div class="hero-grain"></div>
+    <main class="home__main">
+      <section id="home" class="hero">
+        <h1 class="hero__word" aria-label="Atlas wrap glasses">Atlas</h1>
+        <img class="hero__product" :src="heroImage" alt="Atlas wrap glasses in black with rose lenses" />
 
-      <div class="drop-copy" :class="{ 'drop-copy--visible': heroReady }">
-        <h1>
-          YE DROP<br />
-          IS OUT
-        </h1>
-        <p class="hero-sub">
-          Built for everyday wear. Clean, direct, and easy to live in.
-        </p>
-        <a href="#shop" class="cta-link">
-          <span class="cta-text">GO SHOP</span>
-        </a>
-      </div>
-    </section>
+        <div class="hero__bar">
+          <p class="hero__line">The wrap frame, in five colours.</p>
+          <div class="hero__actions">
+            <router-link :to="{ name: 'product-details', params: { slug: 'atlas' } }" class="ff-btn">
+              Shop Atlas
+            </router-link>
+            <a href="#shop" class="ff-btn ff-btn--ghost">See all colours</a>
+          </div>
+        </div>
+      </section>
 
-    <section id="shop" class="body-content">
-      <div class="content-container">
-        <div
-          class="section-header"
-          :class="{ 'section-header--visible': productsReady }"
-        >
-          <h2>OUR LATEST DROP</h2>
+      <section id="shop" class="shop">
+        <header class="shop__head">
+          <h2 class="shop__title">
+            <template v-if="searchTerm">Results for “{{ searchTerm }}”</template>
+            <template v-else>Atlas</template>
+          </h2>
+          <button v-if="searchTerm" type="button" class="ff-link shop__clear" @click="clearSearch">
+            Clear search
+          </button>
+          <p v-else-if="isReady" class="shop__meta">{{ tiles.length }} colours</p>
+        </header>
 
-          <div v-if="route.query.q" class="search-filter-badge">
-            <span>Showing results for "{{ route.query.q }}"</span>
-            <button @click="clearSearchFilter" class="clear-search-btn">
-              <svg
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                width="12"
-                height="12"
-                style="display: inline-block; margin-right: 2px"
-              >
-                <path
-                  d="M6 6 18 18"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M18 6 6 18"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                />
+        <div v-if="tiles.length" class="shop__grid">
+          <ProductCard v-for="tile in tiles" :key="tile.key" :product="tile.product" :color="tile.color" />
+        </div>
+        <p v-else-if="isReady" class="shop__empty">No results for “{{ searchTerm }}”.</p>
+      </section>
+
+      <section class="band">
+        <img class="band__product" :src="bandImage" alt="Atlas wrap glasses in silver with smoke lenses" />
+        <div class="band__copy">
+          <h2 class="band__title">Out all day.</h2>
+          <p>Trail, road or town. Atlas sits low and close, so it stays where you put it.</p>
+          <router-link
+            :to="{ name: 'product-details', params: { slug: 'atlas' }, query: { color: 'Silver / Smoke' } }"
+            class="ff-btn"
+          >
+            Shop Silver / Smoke
+          </router-link>
+        </div>
+      </section>
+
+      <section id="delivery" class="service" aria-label="Delivery and payment">
+        <div class="service__inner">
+          <article class="service__item">
+            <span class="service__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 7.5h18v11H3zM3 10.5h18M7 15.5h3" />
+                <path d="M16.5 4.5v3M14.5 6h4" />
               </svg>
-              Clear
-            </button>
-          </div>
+            </span>
+            <h2>Cash on delivery</h2>
+            <p>Nothing to pay online. Pay the courier when your order arrives.</p>
+          </article>
+          <article class="service__item">
+            <span class="service__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 6.5h11v11H3zM14 10h4l3 3.5v4h-7z" />
+                <circle cx="7.5" cy="18.5" r="1.5" />
+                <circle cx="17.5" cy="18.5" r="1.5" />
+                <path d="M3 9.5h8M3 12.5h6" />
+              </svg>
+            </span>
+            <h2>Home or pickup point</h2>
+            <p>Delivered to your door or a pickup point in your wilaya. The fee shows at checkout.</p>
+          </article>
+          <article class="service__item">
+            <span class="service__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 5.5h16v12H9l-5 3v-15Z" />
+                <path d="M8 10h8M8 13.5h5" />
+              </svg>
+            </span>
+            <h2>Need help?</h2>
+            <p>
+              Questions about your order? <router-link :to="{ name: 'feedback' }" class="ff-link">Send us a message</router-link>
+            </p>
+          </article>
         </div>
+      </section>
+    </main>
 
-        <div
-          class="products-grid"
-          :class="{ 'products-grid--visible': productsReady }"
-        >
-          <template v-if="filteredProducts.length">
-            <div
-              v-for="(product, i) in filteredProducts"
-              :key="product.id"
-              class="product-wrap"
-              :style="{ '--delay': `${i * 120}ms` }"
-            >
-              <ProductCard :product="product" />
-            </div>
-          </template>
-          <div v-else class="no-search-results">
-            <p>No products match your search query.</p>
-            <button @click="clearSearchFilter" class="cta-link inline-cta">
-              View All Products
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <footer class="site-footer">
-      <div class="footer-inner">
-        <div class="footer-brand">
-          <img
-            src="../../assets/images/45svg.png"
-            alt="45 logo"
-            class="footer-logo"
-            width="44"
-            height="44"
-          />
-        </div>
-
-        <div class="footer-links">
-          <div class="footer-col">
-            <span class="footer-col-title">Shop</span>
-            <a href="#shop" class="footer-link">All Products</a>
-            <router-link to="/feedback" class="footer-link">Feedback</router-link>
-          </div>
-          <div class="footer-col">
-            <span class="footer-col-title">Info</span>
-            <a href="#" class="footer-link">About</a>
-            <a href="#" class="footer-link">Shipping &amp; Returns</a>
-            <a href="#" class="footer-link">Size Guide</a>
-          </div>
-          <div class="footer-col">
-            <span class="footer-col-title">Contact</span>
-            <a href="mailto:contact@fortyfive.com" class="footer-link"
-              >contact@fortyfive.com</a
-            >
-            <a href="#" class="footer-link">Instagram</a>
-            <a href="#" class="footer-link">Twitter / X</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="footer-bottom">
-        <p class="footer-copy">
-          &copy; {{ new Date().getFullYear() }} YE. All rights reserved.
-        </p>
-        <p class="footer-made">
-          Made by <span class="footer-author">Mouheb</span>
-        </p>
-        <div class="footer-legal">
-          <a href="#" class="footer-legal-link">Privacy Policy</a>
-          <span class="footer-dot">&middot;</span>
-          <a href="#" class="footer-legal-link">Terms of Use</a>
-        </div>
-      </div>
-    </footer>
-  </main>
+    <SiteFooter />
+  </div>
 </template>
 
 <style scoped>
-/* ── Shell ── */
-.site-shell {
-  background: #050505;
-  color: #fff;
-  min-height: 100vh;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  font-family: "Cormorant Garamond", Georgia, serif;
+.home {
+  background: var(--paper);
+}
+
+/* Slide the page up so the hero runs behind the floating header. */
+.home__main {
+  margin-top: calc((var(--header-h) + 0.75rem) * -1);
 }
 
 /* ── Hero ── */
-.drop-hero {
+.hero {
   position: relative;
-  min-height: 0;
-  height: clamp(18rem, 56vw, calc(100vh - clamp(5rem, 6.6vw, 7.9rem)));
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  overflow: hidden;
-  padding: 0 clamp(1.5rem, 7vw, 8rem);
-}
-
-.hero-photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 24% center;
-  opacity: 0;
-  transform: scale(1.06);
-  transition:
-    opacity 1.2s ease,
-    transform 1.8s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.hero-photo--visible {
-  opacity: 1;
-  transform: scale(1);
-  animation: hero-drift 18s ease-in-out infinite;
-}
-
-@keyframes hero-drift {
-  0% {
-    transform: scale(1) translateY(0);
-  }
-  50% {
-    transform: scale(1.03) translateY(-1%);
-  }
-  100% {
-    transform: scale(1) translateY(0);
-  }
-}
-
-.hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0.02) 0%,
-    rgba(0, 0, 0, 0.08) 35%,
-    rgba(0, 0, 0, 0.58) 72%,
-    rgba(0, 0, 0, 0.82) 100%
-  );
-}
-
-.hero-grain {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-.drop-copy {
-  position: relative;
-  z-index: 2;
-  width: min(34rem, 40vw);
-  text-align: left;
-  color: #f4ead6;
-  opacity: 0;
-  transform: translateX(40px);
-  transition:
-    opacity 1s ease 0.4s,
-    transform 1s cubic-bezier(0.22, 1, 0.36, 1) 0.4s;
-}
-
-.drop-copy--visible {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-h1 {
-  margin: 0;
-  font-family: "Helvetica Neue", sans-serif;
-  font-size: clamp(4.6rem, 8vw, 8.4rem);
-  font-weight: 900;
-  line-height: 0.88;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
-  color: #fff;
-}
-
-.hero-sub {
-  font-family: "Sora", sans-serif;
-  margin: 1rem 0 0;
-  max-width: 20rem;
-  color: rgba(244, 234, 214, 0.78);
-  font-size: 0.86rem;
-  line-height: 1.6;
-}
-
-/* ── CTA Button ── */
-.cta-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  margin-top: 2rem;
-  color: #102f36;
-  text-decoration: none;
-  font-family: "Helvetica Neue", sans-serif;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: 0.9rem 1.35rem 0.9rem 1.55rem;
-  background: #f4ead6;
-  border: 1px solid rgba(244, 234, 214, 0.85);
-  border-radius: 999px;
-  box-shadow: 0 0.45rem 0 rgba(123, 163, 181, 0.72);
-  position: relative;
-  min-width: 11.25rem;
-  transition:
-    background 0.24s ease,
-    box-shadow 0.24s ease,
-    color 0.24s ease,
-    transform 0.24s ease;
-}
-
-.cta-link:hover {
-  background: #7ba3b5;
-  border-color: #7ba3b5;
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 0.6rem 0 rgba(244, 234, 214, 0.72);
-}
-
-.cta-link:active {
-  transform: translateY(2px);
-  box-shadow: 0 0.18rem 0 rgba(123, 163, 181, 0.72);
-}
-
-.cta-text,
-.cta-arrow {
-  position: relative;
-  z-index: 1;
-}
-
-/* ── Body / Products Section ── */
-.body-content {
-  flex: 1;
-  padding: clamp(3rem, 6vw, 6rem) clamp(1.25rem, 7vw, 16rem);
-  background:
-    radial-gradient(circle at top, rgba(123, 163, 181, 0.1), transparent 28%),
-    linear-gradient(180deg, #f3ede6 0%, #ece4da 100%);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.content-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.section-header {
-  position: relative;
-  margin-bottom: clamp(2.5rem, 5vw, 4.5rem);
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.8s ease,
-    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.section-header--visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.content-container h2 {
-  font-family: "Sora", sans-serif;
-  font-size: clamp(2rem, 4.8vw, 4.2rem);
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  color: #1a2429;
-  margin: 0 0 0.9rem;
-  line-height: 0.92;
-  text-transform: uppercase;
-}
-
-.section-sub {
-  font-family: "Sora", sans-serif;
-  font-size: 0.8rem;
-  font-weight: 400;
-  letter-spacing: 0.18em;
-  color: rgba(56, 70, 77, 0.72);
-  font-style: italic;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-/* ── Search Filter Badge ── */
-.search-filter-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-top: 1.2rem;
-  padding: 0.5rem 1rem;
-  background: rgba(123, 163, 181, 0.15);
-  border: 1px solid rgba(123, 163, 181, 0.3);
-  border-radius: 999px;
-  font-family: "Sora", sans-serif;
-  font-size: 0.75rem;
-  color: #1a2429;
-}
-
-.clear-search-btn {
-  cursor: pointer;
-  background: none;
-  border: none;
-  color: #7ba3b5;
-  font-family: "Sora", sans-serif;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  display: inline-flex;
-  align-items: center;
-  padding: 0;
-  transition: color 0.2s ease;
-}
-
-.clear-search-btn:hover {
-  color: #102f36;
-}
-
-.no-search-results {
-  text-align: center;
-  padding: 3rem 1rem;
-  font-family: "Sora", sans-serif;
-  color: rgba(56, 70, 77, 0.72);
-}
-
-.no-search-results p {
-  font-size: 0.9rem;
-  margin-bottom: 1.5rem;
-}
-
-.inline-cta {
-  margin-top: 0;
-}
-
-/* ── Products Grid ── */
-.products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
-  justify-content: center;
-  gap: clamp(1.25rem, 2vw, 2rem);
+  grid-template-rows: 1fr auto;
+  min-height: min(calc(100svh - 2.2rem), 58rem);
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 38%, #efefed 0%, #dededb 55%, #c9c9c5 100%);
 }
 
-@media (min-width: 768px) {
-  .products-grid {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 320px));
-    max-width: 1120px;
-    margin-left: auto;
-    margin-right: auto;
+.hero__word {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -58%);
+  color: #fff;
+  font-size: clamp(7rem, 31vw, 34rem);
+  font-weight: 600;
+  letter-spacing: -0.07em;
+  line-height: 0.8;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.hero__product {
+  position: relative;
+  align-self: center;
+  justify-self: center;
+  width: min(74vw, 66rem);
+  margin-top: clamp(4rem, 8vh, 7rem);
+  animation: product-in 1s var(--ease) both;
+}
+
+@keyframes product-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem) scale(0.97);
   }
 }
 
-.product-wrap {
-  width: min(100%, 320px);
-  min-height: 0;
-  opacity: 0;
-  transform: translateY(30px);
-  transition:
-    opacity 0.7s ease var(--delay, 0ms),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--delay, 0ms);
-  background: transparent;
-  border-radius: 0;
-  overflow: visible;
-  border: 0;
-  box-shadow: none;
-  cursor: default;
+.hero__bar {
   position: relative;
-}
-
-.product-wrap::after {
-  content: none;
-}
-
-.products-grid--visible .product-wrap {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.products-grid--visible .product-wrap:hover {
-  transform: translateY(-4px);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* ── Footer ── */
-.site-footer {
-  background: #7ba3b5;
-  color: #e8dcc8;
-  padding: clamp(3rem, 5vw, 5rem) clamp(1.25rem, 7vw, 8rem) 0;
-  font-family: "Helvetica Neue", sans-serif;
-}
-
-.footer-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: clamp(2.5rem, 5vw, 5rem);
-  padding-bottom: clamp(2.5rem, 4vw, 4rem);
-  border-bottom: 1px solid rgba(232, 220, 200, 0.2);
-}
-
-.footer-brand {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  max-width: 200px;
-}
-
-.footer-logo {
-  display: block;
-  height: clamp(2rem, 3vw, 2.8rem);
-  width: clamp(2rem, 3vw, 2.8rem);
-  object-fit: contain;
-  filter: invert(1) brightness(1.1);
-  mix-blend-mode: screen;
-}
-
-.footer-links {
-  flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: clamp(1.5rem, 4vw, 4rem);
-  justify-content: flex-end;
-}
-
-.footer-col {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  min-width: 120px;
-}
-
-.footer-col-title {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: rgba(232, 220, 200, 0.4);
-  margin-bottom: 0.3rem;
-}
-
-.footer-link {
-  color: #e8dcc8;
-  text-decoration: none;
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
-  opacity: 0.8;
-  font-weight: bold;
-  transition:
-    opacity 0.2s ease,
-    letter-spacing 0.25s ease;
-}
-
-.footer-link:hover {
-  opacity: 1;
-  letter-spacing: 0.1em;
-}
-
-.footer-bottom {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1.4rem 0 1.6rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 2rem;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding: 0 var(--gutter) clamp(1.5rem, 3vw, 2.5rem);
 }
 
-.footer-copy {
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  color: rgba(232, 220, 200, 0.5);
-  margin: 0;
+.hero__line {
+  font-size: clamp(1.125rem, 1.6vw, 1.5rem);
+  font-weight: 500;
+  letter-spacing: -0.025em;
 }
 
-.footer-made {
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  color: rgba(232, 220, 200, 0.5);
-  margin: 0;
-}
-
-.footer-author {
-  color: #e8dcc8;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-}
-
-.footer-legal {
-  margin-left: auto;
+.hero__actions {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 0.6rem;
 }
 
-.footer-dot {
-  color: rgba(232, 220, 200, 0.3);
-  font-size: 0.75rem;
+/* ── Shop ── */
+.shop {
+  padding: clamp(2.5rem, 5vw, 4.5rem) var(--gutter);
 }
 
-.footer-legal-link {
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(232, 220, 200, 0.5);
-  text-decoration: none;
-  transition: color 0.2s ease;
+.shop__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
-.footer-legal-link:hover {
-  color: #e8dcc8;
+.shop__title {
+  font-size: clamp(1.25rem, 1.8vw, 1.625rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
-/* ── Mobile ── */
+.shop__meta {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.shop__clear {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.shop__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2rem 0.75rem;
+}
+
+.shop__empty {
+  padding: 2rem 0;
+  color: var(--ink-soft);
+}
+
+/* ── Feature band ── */
+.band {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 2rem;
+  margin: 0 var(--gutter);
+  padding: clamp(1.5rem, 4vw, 4rem);
+  border-radius: var(--radius);
+  background: linear-gradient(160deg, #e9ecee 0%, #d3d8dc 100%);
+  overflow: hidden;
+}
+
+.band__product {
+  width: 100%;
+  transform: scale(1.12);
+}
+
+.band__title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.band__copy p {
+  margin: 1rem 0 1.75rem;
+  max-width: 22rem;
+  color: #3d3d3d;
+}
+
+/* ── Delivery and payment ── */
+.service {
+  background: #f5f5f3;
+  padding: clamp(2.5rem, 5vw, 4.5rem) var(--gutter);
+}
+
+.service__inner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  max-width: var(--page);
+  margin: 0 auto;
+}
+
+.service__item {
+  min-height: 13rem;
+  padding: clamp(1.35rem, 2.5vw, 2rem);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.service__icon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #f1f1ef;
+  color: #242424;
+}
+
+.service__icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.service h2 {
+  margin-top: 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.service p {
+  margin-top: 0.35rem;
+  max-width: 24rem;
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+@media (max-width: 1100px) {
+  .shop__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
-  .drop-hero {
-    justify-content: flex-end;
-    align-items: flex-end;
-    height: clamp(12rem, 48vw, 20rem);
-    padding: 0 1.1rem 1.5rem;
+  .home__main {
+    margin-top: calc((var(--header-h) + 0.5rem) * -1);
   }
 
-  .hero-photo {
-    object-position: 18% center;
+  .hero {
+    min-height: min(calc(100svh - 2.2rem), 40rem);
   }
 
-  .hero-overlay {
-    background: linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.02) 0%,
-      rgba(0, 0, 0, 0.55) 100%
-    );
+  .hero__word {
+    top: 36%;
+    font-size: 36vw;
   }
 
-  .drop-copy {
-    bottom: 1rem;
-    display: block;
-    left: auto;
-    opacity: 1;
-    position: absolute;
-    right: 1rem;
-    text-align: right;
-    width: 11rem;
-    transform: none;
+  .hero__product {
+    width: 104vw;
+    max-width: none;
+    margin-top: 5rem;
   }
 
-  h1 {
-    font-size: clamp(1.8rem, 8vw, 2.4rem);
-    line-height: 0.95;
-    margin-bottom: 0.55rem;
+  .hero__bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .hero-sub {
-    font-size: 0.62rem;
-    line-height: 1.45;
-    margin-top: 0;
-    margin-left: auto;
-    max-width: 10rem;
+  .hero__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .cta-link {
-    display: flex;
-    font-size: 0.62rem;
-    justify-content: center;
-    letter-spacing: 0.16em;
-    margin-top: 0.8rem;
-    min-width: 0;
-    padding: 0.7rem 1rem;
-    width: 100%;
+  .hero__actions .ff-btn {
+    padding: 0 0.75rem;
   }
 
-  .body-content {
-    padding: 3rem 1rem;
+  .shop__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem 0.5rem;
   }
 
-  .section-header {
-    margin-bottom: 2.4rem;
-  }
-
-  .content-container h2 {
-    font-size: clamp(1.5rem, 8vw, 2.2rem);
-    line-height: 1;
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 18rem;
-    overflow-wrap: anywhere;
-  }
-
-  .section-sub {
-    font-size: 0.66rem;
-    line-height: 1.5;
-  }
-
-  .products-grid {
+  .band {
     grid-template-columns: 1fr;
-    justify-items: center;
+    gap: 0.5rem;
   }
 
-  .product-wrap {
-    width: min(100%, 320px);
-    min-height: 0;
+  .service {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
   }
 
-  .footer-links {
-    justify-content: flex-start;
+  .service__inner {
+    grid-template-columns: 1fr;
   }
 
-  .footer-legal {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .footer-bottom {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.4rem;
+  .service__item {
+    min-height: auto;
   }
 }
 </style>

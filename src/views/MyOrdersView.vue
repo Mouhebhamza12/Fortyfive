@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import SiteFooter from "../components/SiteFooter.vue";
 import SiteHeader from "../components/SiteHeader.vue";
 import { apiFetch } from "../lib/api";
 import { formatPrice } from "../lib/formatPrice";
@@ -9,11 +10,6 @@ const router = useRouter();
 const orders = ref([]);
 const isLoading = ref(true);
 const errorMessage = ref("");
-
-const navLinks = [
-  { label: "Home", route: { name: "home" } },
-  { label: "Shop", route: { name: "home", hash: "#shop" } },
-];
 
 const statusLabels = {
   pending: "Pending",
@@ -54,21 +50,21 @@ const formatDate = (value) =>
 </script>
 
 <template>
-  <main class="orders-shell">
-    <SiteHeader :nav-links="navLinks" :visible="true" />
+  <div class="ff-page">
+    <SiteHeader />
 
-    <section class="orders-layout">
-      <div class="orders-card">
-        <p class="orders-eyebrow">Account</p>
-        <h1>My orders</h1>
-        <p class="orders-intro">Track the status of your purchases.</p>
+    <main class="ff-page__main">
+      <div class="ff-narrow">
+        <h1 class="ff-page-title">My orders</h1>
+        <p class="ff-page-intro">Every order you have placed, newest first.</p>
 
-        <div v-if="isLoading" class="orders-state">Loading orders...</div>
+        <div v-if="isLoading" class="orders-state">Loading your orders…</div>
 
         <p v-else-if="errorMessage" class="orders-error">{{ errorMessage }}</p>
 
         <p v-else-if="!orders.length" class="orders-state">
-          You have not placed any orders yet.
+          You have not placed an order yet.
+          <router-link :to="{ name: 'home', hash: '#shop' }" class="ff-link">Shop now</router-link>
         </p>
 
         <div v-else class="orders-list">
@@ -83,115 +79,79 @@ const formatDate = (value) =>
 
             <ul class="order-lines">
               <li v-for="(item, index) in order.items" :key="index">
-                {{ item.name }} · {{ item.color }} / {{ item.size }} · x{{ item.quantity }}
+                {{ item.quantity }} × {{ item.name }}, {{ item.color }}<template v-if="item.size && item.size !== 'One size'">, {{ item.size }}</template>
               </li>
             </ul>
 
-            <p class="order-total">Total: {{ formatPrice(order.total_amount) }}</p>
+            <p class="order-total">Total {{ formatPrice(order.total_amount) }}</p>
           </article>
         </div>
       </div>
-    </section>
-  </main>
+    </main>
+
+    <SiteFooter />
+  </div>
 </template>
 
 <style scoped>
-.orders-shell {
-  min-height: 100vh;
-  background: #050505;
-}
-
-.orders-layout {
-  min-height: calc(100vh - 5rem);
-  display: flex;
-  justify-content: center;
-  padding: clamp(2rem, 4vw, 4rem);
-  background:
-    radial-gradient(circle at 12% 14%, rgba(123, 163, 181, 0.22), transparent 24%),
-    linear-gradient(180deg, #efe5d6 0%, #e8dcc8 100%);
-}
-
-.orders-card {
-  width: min(760px, 100%);
-  padding: clamp(1.4rem, 3vw, 2.4rem);
-  border: 1px solid rgba(23, 33, 38, 0.12);
-  background: rgba(255, 252, 246, 0.58);
-}
-
-.orders-eyebrow {
-  margin: 0;
-  color: rgba(79, 105, 115, 0.92);
-  font-family: "Sora", sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.orders-card h1 {
-  margin: 0.5rem 0 0;
-  color: #172126;
-  font-family: "Helvetica Neue", sans-serif;
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.orders-intro,
 .orders-state,
-.orders-error,
-.order-head p,
-.order-lines,
-.order-total {
-  color: rgba(23, 33, 38, 0.76);
-  font-family: "Sora", sans-serif;
+.orders-error {
+  margin-top: 2rem;
+  color: var(--ink-soft);
+}
+
+.orders-error {
+  color: var(--alert);
 }
 
 .orders-list {
-  display: grid;
-  gap: 1rem;
-  margin-top: 2rem;
+  margin-top: 2.25rem;
+  border-top: 1px solid var(--line-strong);
 }
 
 .order-item {
-  padding: 1rem;
-  border: 1px solid rgba(23, 33, 38, 0.12);
-  background: rgba(255, 255, 255, 0.45);
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--line);
 }
 
 .order-head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  align-items: center;
 }
 
 .order-head h2 {
-  margin: 0;
-  font-size: 1rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .order-head p {
-  margin: 0.25rem 0 0;
-  font-size: 0.85rem;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
 }
 
 .order-status {
-  padding: 0.35rem 0.7rem;
-  border-radius: 999px;
-  background: rgba(23, 33, 38, 0.08);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  background: var(--mist);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .order-lines {
-  margin: 0.85rem 0 0;
-  padding-left: 1rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  color: var(--ink-soft);
 }
 
 .order-total {
-  margin: 0.75rem 0 0;
-  font-weight: 700;
+  margin-top: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 </style>

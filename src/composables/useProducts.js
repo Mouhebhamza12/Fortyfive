@@ -1,12 +1,18 @@
 import { computed, ref } from "vue";
 import { products as staticProducts } from "../data/products";
 import { apiFetch } from "../lib/api";
-import { formatPrice } from "../lib/formatPrice";
+import { formatPrice, parsePrice } from "../lib/formatPrice";
 
 const catalog = ref([]);
 const isLoading = ref(false);
 const isReady = ref(false);
 let loadPromise = null;
+
+const staticCatalog = () =>
+  staticProducts.map((product) => {
+    const priceValue = parsePrice(product.price);
+    return { ...product, priceValue, price: formatPrice(priceValue), in_stock: true };
+  });
 
 const mergeWithStatic = (apiProduct) => {
   const staticProduct = staticProducts.find(
@@ -31,17 +37,18 @@ const mergeWithStatic = (apiProduct) => {
         : apiProduct.images?.[0]?.src) ??
       "",
     images: staticProduct?.images ?? apiProduct.images ?? [],
-    color: staticProduct?.color ?? apiProduct.colors?.[0] ?? "White",
+    color: apiProduct.colors?.[0] ?? staticProduct?.color ?? "",
     colors: apiProduct.colors?.length
       ? apiProduct.colors
-      : staticProduct?.colors ?? ["White"],
-    fit: staticProduct?.fit ?? "Relaxed fit",
-    material: staticProduct?.material ?? "240gsm cotton jersey",
+      : staticProduct?.colors ?? [],
+    swatches: staticProduct?.swatches ?? {},
+    category: apiProduct.category || staticProduct?.category || "",
+    shape: staticProduct?.shape ?? "",
     description: apiProduct.description || staticProduct?.description || "",
-    details: staticProduct?.details ?? [],
+    specs: staticProduct?.specs ?? [],
     sizes: apiProduct.sizes?.length
       ? apiProduct.sizes
-      : staticProduct?.sizes ?? ["S", "M", "L", "XL"],
+      : staticProduct?.sizes ?? ["One size"],
     featured: Boolean(apiProduct.featured),
     in_stock: apiProduct.in_stock !== false,
   };
@@ -68,25 +75,13 @@ const loadProducts = async () => {
         if (Array.isArray(data) && data.length) {
           catalog.value = data.map(mergeWithStatic);
         } else {
-          catalog.value = staticProducts.map((product) => ({
-            ...product,
-            priceValue:
-              Number.parseInt(String(product.price).replace(/[^\d]/g, ""), 10) || 0,
-          }));
+          catalog.value = staticCatalog();
         }
       } else {
-        catalog.value = staticProducts.map((product) => ({
-          ...product,
-          priceValue:
-            Number.parseInt(String(product.price).replace(/[^\d]/g, ""), 10) || 0,
-        }));
+        catalog.value = staticCatalog();
       }
     } catch {
-      catalog.value = staticProducts.map((product) => ({
-        ...product,
-        priceValue:
-          Number.parseInt(String(product.price).replace(/[^\d]/g, ""), 10) || 0,
-      }));
+      catalog.value = staticCatalog();
     } finally {
       isLoading.value = false;
       isReady.value = true;
@@ -104,7 +99,7 @@ export const useProducts = () => {
 
   const getProductBySlug = (slug) =>
     catalog.value.find((product) => product.slug === slug) ??
-    staticProducts.find((product) => product.slug === slug);
+    staticCatalog().find((product) => product.slug === slug);
 
   return {
     products,
